@@ -25,7 +25,7 @@ import { attachSeasonalMetadata } from './seasonal-metadata.mjs'
 import { createSubtitleService } from './subtitle-service.mjs'
 import { replaceMediaSource } from './replace-source.mjs'
 import { createEmbeddedSubtitles, subtitleContainer } from './embedded-subtitles.mjs'
-import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, parseLaunchArgs } from './games.mjs'
+import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, parseLaunchArgs, searchSteamApps, fetchSteamAppDetail } from './games.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const DATA = process.env.YINGYU_DATA_DIR || path.join(ROOT, 'data')
@@ -871,6 +871,42 @@ const server = http.createServer(async (req, res) => {
       if (input.autoMetadata !== false)
         for (const id of imported) void enrichGame(id)
       return json(res, { results, imported: imported.length, ...publicState() })
+    }
+    if (route === '/api/games/search' && req.method === 'GET') {
+      try {
+        return json(res, {
+          results: await searchSteamApps(url.searchParams.get('q') || ''),
+        })
+      } catch (error) {
+        return json(res, { error: error.message || 'Steam 搜索暂时不可用' }, 502)
+      }
+    }
+    const gameApplyRoute = /^\/api\/games\/([^/]+)\/apply$/.exec(route)
+    if (gameApplyRoute && req.method === 'POST') {
+      const game = state.games.find((item) => item.id === gameApplyRoute[1])
+      if (!game) return json(res, { error: '游戏不存在' }, 404)
+      const input = await body(req)
+      try {
+        const detail = await fetchSteamAppDetail(Number(input?.appId))
+        game.title = detail.title || game.title
+        if (detail.description) game.description = detail.description
+        if (detail.genre) game.genre = detail.genre
+        try {
+          const cover = await downloadGameCover(detail.appId, {
+            headerImage: detail.headerImage,
+          })
+          const name = `${fileId(`game-steam-${detail.appId}`)}.${cover.extension}`
+          await writeFile(path.join(DATA, 'covers', name), cover.bytes)
+          game.cover = `/covers/${name}`
+        } catch {}
+        game.manual = { ...(game.manual || {}), title: true, description: true, genre: true, cover: true }
+        game.metadataStatus = 'ready'
+        delete game.metadataError
+        await save()
+        return json(res, publicState())
+      } catch (error) {
+        return json(res, { error: error.message || '资料应用失败' }, 502)
+      }
     }
     const gameLaunchRoute = /^\/api\/games\/([^/]+)\/launch$/.exec(route)
     if (gameLaunchRoute && req.method === 'POST') {

@@ -229,3 +229,68 @@ export async function downloadGameCover(appId, deps = {}) {
   }
   throw lastError || failure('封面暂时无法下载')
 }
+
+// 按名称搜索 Steam 候选（供手动纠错：exe 简称搜不到正确游戏时使用）。
+export async function searchSteamApps(keyword, fetcher = fetch) {
+  const query = String(keyword || '').trim().slice(0, 80)
+  if (!query) return []
+  const request = (url) =>
+    fetcher(url, {
+      signal: AbortSignal.timeout(12000),
+      headers: { 'User-Agent': 'Yingyu/1.3 (personal media library)' },
+    })
+  const response = await request(
+    `${STEAM_STORE}/api/storesearch/?term=${encodeURIComponent(query)}&cc=CN&l=schinese`,
+  )
+  if (!response.ok) throw failure('Steam 搜索暂时不可用')
+  const data = await response.json()
+  return (Array.isArray(data?.items) ? data.items : [])
+    .slice(0, 10)
+    .map((item) => ({
+      appId: Number(item.id),
+      name: String(item.name || ''),
+      image: String(item.tiny_image || ''),
+    }))
+    .filter(
+      (item) =>
+        Number.isSafeInteger(item.appId) &&
+        item.appId > 0 &&
+        item.name &&
+        isAllowedGameImageUrl(item.image),
+    )
+}
+
+// 拉取指定 Steam 应用的资料并下载封面（与应用到某个游戏前先取好）。
+export async function fetchSteamAppDetail(appId, fetcher = fetch) {
+  const id = Number(appId)
+  if (!Number.isSafeInteger(id) || id <= 0 || id > 2147483647)
+    throw failure('Steam 应用编号不正确')
+  const payload = await (async () => {
+    const response = await fetcher(
+      `${STEAM_STORE}/api/appdetails?appids=${id}&cc=CN&l=schinese`,
+      {
+        signal: AbortSignal.timeout(15000),
+        headers: { 'User-Agent': 'Yingyu/1.3 (personal media library)' },
+      },
+    )
+    if (!response.ok) throw failure('Steam 资料暂时无法获取')
+    return response.json()
+  })()
+  const details = payload?.[String(id)]
+  if (!details?.success || !details.data) throw failure('没有找到这款游戏的 Steam 资料')
+  const data = details.data
+  return {
+    appId: id,
+    title: typeof data.name === 'string' && data.name.trim() ? data.name.trim() : '',
+    description:
+      typeof data.short_description === 'string'
+        ? data.short_description.slice(0, 2000)
+        : '',
+    genre:
+      typeof data.genres?.[0]?.description === 'string'
+        ? data.genres[0].description
+        : '',
+    headerImage:
+      typeof data.header_image === 'string' ? data.header_image : '',
+  }
+}

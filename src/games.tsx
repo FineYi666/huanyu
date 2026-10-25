@@ -190,6 +190,12 @@ export function GameDetailDialog({
   const [description, setDescription] = useState(game.description || '')
   const [launchArgs, setLaunchArgs] = useState(game.launchArgs || '')
   const [workDir, setWorkDir] = useState(game.workDir || '')
+  const [steamQuery, setSteamQuery] = useState(game.title)
+  const [steamResults, setSteamResults] = useState<
+    { appId: number; name: string; image: string }[] | null
+  >(null)
+  const [steamBusy, setSteamBusy] = useState(false)
+  const [applyingId, setApplyingId] = useState(0)
   const file = useRef<HTMLInputElement>(null)
   useEffect(() => {
     if (!editing) {
@@ -254,6 +260,37 @@ export function GameDetailDialog({
       )
       return data
     })
+  async function searchSteam() {
+    const keyword = steamQuery.trim()
+    if (!keyword || steamBusy) return
+    setSteamBusy(true)
+    try {
+      const data = await api<{ results: { appId: number; name: string; image: string }[] }>(
+        `/games/search?q=${encodeURIComponent(keyword)}`,
+      )
+      setSteamResults(data.results || [])
+      if (!(data.results || []).length) notify('Steam 没有返回匹配的游戏')
+    } catch (error) {
+      notify((error as Error).message)
+    } finally {
+      setSteamBusy(false)
+    }
+  }
+  async function applySteam(appId: number) {
+    if (applyingId) return
+    setApplyingId(appId)
+    try {
+      onUpdate(
+        await api<AppState>(`/games/${game.id}/apply`, { appId }),
+      )
+      setSteamResults(null)
+      notify('已应用 Steam 的封面与介绍')
+    } catch (error) {
+      notify((error as Error).message)
+    } finally {
+      setApplyingId(0)
+    }
+  }
   const remove = () =>
     run(
       () => api<AppState>(`/games/${game.id}`, {}, 'DELETE'),
@@ -350,6 +387,67 @@ export function GameDetailDialog({
           </div>
         </div>
       </div>
+      {!editing && (
+        <div className="steam-search-panel">
+          <div className="steam-search-head">
+            <strong>从 Steam 匹配资料</strong>
+            <p>启动程序名是简称时，输入正确的游戏名称，搜索并一键应用封面与介绍。</p>
+          </div>
+          <div className="steam-search-row">
+            <input
+              value={steamQuery}
+              onChange={(e) => setSteamQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  void searchSteam()
+                }
+              }}
+              placeholder="输入游戏名称，如：寂静岭F"
+              maxLength={80}
+              aria-label="搜索 Steam 游戏"
+            />
+            <button
+              type="button"
+              className="button subtle"
+              disabled={steamBusy || !steamQuery.trim()}
+              onClick={() => void searchSteam()}
+            >
+              {steamBusy ? (
+                <LoaderCircle size={15} className="spin" />
+              ) : (
+                <Sparkles size={15} />
+              )}
+              搜索
+            </button>
+          </div>
+          {steamResults && (
+            <div className="steam-results">
+              {steamResults.length ? (
+                steamResults.map((item) => (
+                  <button
+                    type="button"
+                    key={item.appId}
+                    className="steam-result"
+                    disabled={Boolean(applyingId)}
+                    onClick={() => void applySteam(item.appId)}
+                  >
+                    <img src={item.image} alt="" loading="lazy" />
+                    <span>{item.name}</span>
+                    {applyingId === item.appId ? (
+                      <LoaderCircle size={15} className="spin" />
+                    ) : (
+                      <Check size={15} />
+                    )}
+                  </button>
+                ))
+              ) : (
+                <p className="steam-empty">没有找到匹配的游戏，可手动填写介绍。</p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
       {showMetaPanel && (
         <div className={`metadata-status-panel ${game.metadataStatus || ''}`}>
           <div>
