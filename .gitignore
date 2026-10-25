@@ -11,3 +11,4 @@ docs/screenshots/*.tmp
 .env
 debug.log
 nul
+installer/staging2/

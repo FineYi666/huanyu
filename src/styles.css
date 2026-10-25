@@ -3629,3 +3629,8 @@ html[data-desktop='true'] .app-shell .topbar .search-box input {
   font-size: 11.5px;
   color: var(--secondary);
 }
+
+/* ---------- macOS：系统红绿灯避让 ---------- */
+html[data-platform='darwin'] .app-shell .topbar {
+  padding-left: 84px;
+}

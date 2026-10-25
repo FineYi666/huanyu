@@ -2,10 +2,13 @@ import path from 'node:path'
 import { readFile, writeFile, rename, unlink, mkdir } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 
+// Windows：DPAPI（当前用户加密）；macOS / Linux：Base64 明文存于本机用户目录。
 function transformSecret(value, decrypt = false) {
   if (process.platform !== 'win32')
-    throw new Error(
-      '此版本的密钥加密存储需要 Windows；请在 Windows 版幻屿中绑定',
+    return Promise.resolve(
+      decrypt
+        ? Buffer.from(value, 'base64').toString('utf8')
+        : Buffer.from(value, 'utf8').toString('base64'),
     )
   const script = `Add-Type -AssemblyName System.Security; $v=[Console]::In.ReadToEnd(); ${
     decrypt

@@ -7,7 +7,7 @@
 [![Version](https://img.shields.io/badge/version-1.3.0-blue)](../../releases)
 [![Platform](https://img.shields.io/badge/platform-Windows-lightgrey)](../../releases)
 [![Electron](https://img.shields.io/badge/Electron-45-47848F)](https://www.electronjs.org/)
-[![License: MIT](https://img.shields.io/badge/license-MIT-green)](LICENSE)
+[![License](https://img.shields.io/badge/license-个人使用·禁商用·禁抄袭-orange)](LICENSE)
 
 **季度新番 · 动漫 · 电影 · 本地游戏 · 全部收藏在你自己的电脑上**
 
@@ -110,12 +110,29 @@ npm test           # 运行测试
 npm run typecheck  # 类型检查
 ```
 
-## ⚠️ 免责声明
+## 📜 使用许可与免责声明
 
-- 本项目仅供学习与个人使用。夸克网盘相关功能基于其网页端公开接口，请遵守服务条款；播放质量与可用性取决于账号权限。
-- 新番资料与海报来自 [Bangumi](https://bgm.tv) 公开接口，版权归原权利方所有。
-- 请勿将本软件用于任何商业用途。
+完整条款见 [LICENSE](LICENSE)，要点如下：
+
+**✅ 你可以**
+
+- 免费下载、安装并在本机使用幻屿
+- **原样分享**给他人（不修改、不收费、完整保留软件内的名称、图标与版权信息）
+
+**⛔ 你不可以**
+
+- 将本软件或其任何部分用于**任何商业用途**（出售、付费下载、捆绑销售、广告变现、商业演示等）
+- **抄袭冒充**：将本软件的代码、界面、素材、文案声称为自己的作品
+- 移除、修改或遮盖软件内的名称、图标与版权信息后分发
+- 对软件修改、二次开发后公开分发衍生版本（个人学习修改仅限自用）
+
+**⚠️ 免责声明**
+
+- 本软件按"现状"提供，不附带任何明示或默示的担保
+- 新番资料与海报来自 [Bangumi](https://bgm.tv)、游戏资料来自 Steam 公开接口，版权归原权利方所有；夸克网盘功能基于其网页端公开接口，请遵守服务条款，播放质量与可用性取决于账号权限
+- 对因使用或无法使用本软件产生的任何损失，作者不承担责任
+- 违反上述条款将自动终止使用授权，作者保留追究责任的权利
 
 ## 📄 License
 
-[MIT](LICENSE) © FineYi666
+[幻屿使用许可与免责声明](LICENSE) © 2026 FineYi666 · 保留所有未明示授予的权利

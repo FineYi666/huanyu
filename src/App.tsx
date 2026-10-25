@@ -1563,13 +1563,17 @@ export default function App() {
     state?.settings.skin,
     state?.settings.glass,
   ])
-  // 桌面端（Electron）：窗口按钮由顶栏自绘，随页面滚动，不遮挡内容。
+  // 桌面端（Electron）：Windows 自绘窗口按钮；macOS 使用系统红绿灯。
   const [isDesktop, setIsDesktop] = useState(false)
+  const [isMac, setIsMac] = useState(false)
   const [isMaximized, setIsMaximized] = useState(false)
   useEffect(() => {
     if (!/ Electron\/[\d.]+/.test(navigator.userAgent)) return
+    const mac = /Macintosh|Mac OS X/.test(navigator.userAgent)
     setIsDesktop(true)
+    setIsMac(mac)
     document.documentElement.dataset.desktop = 'true'
+    document.documentElement.dataset.platform = mac ? 'darwin' : 'win32'
     const desktop = window.yingyuDesktop
     if (!desktop?.onMaximizeChange) return
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
@@ -1834,7 +1838,7 @@ export default function App() {
               <span />
               本地运行
             </div>
-            {isDesktop && (
+            {isDesktop && !isMac && (
               <div className="window-controls">
                 <button
                   type="button"

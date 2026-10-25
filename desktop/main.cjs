@@ -16,9 +16,15 @@ const { allowFullscreen } = require('./permissions.cjs')
 app.setName('幻屿')
 app.setAppUserModelId('cn.yingyu.cinema')
 let window
+const isMac = process.platform === 'darwin'
 const root = app.isPackaged
   ? path.dirname(process.execPath)
   : path.resolve(__dirname, '..')
+const runtimeNode = path.join(
+  root,
+  'runtime',
+  process.platform === 'win32' ? 'node.exe' : path.join('bin', 'node'),
+)
 const port = Number(process.env.YINGYU_PORT || 4317)
 const origin = `http://127.0.0.1:${port}`
 function external(value) {
@@ -42,10 +48,23 @@ else {
   })
   app.whenReady().then(async () => {
     try {
+      if (isMac) {
+        // 便携 zip 不保留可执行位，首次启动自动补齐。
+        for (const target of [
+          runtimeNode,
+          path.join(root, 'runtime', 'ffmpeg'),
+          path.join(root, 'runtime', 'ffprobe'),
+        ])
+          await promisify(execFile)('chmod', ['+x', target]).catch(() => {})
+      }
       await promisify(execFile)(
-        path.join(root, 'runtime', 'node.exe'),
+        runtimeNode,
         [path.join(root, 'launch.mjs'), '--no-open'],
-        { cwd: root, windowsHide: true, timeout: 30000 },
+        {
+          cwd: root,
+          timeout: 30000,
+          ...(process.platform === 'win32' ? { windowsHide: true } : {}),
+        },
       )
       Menu.setApplicationMenu(null)
       session.defaultSession.setPermissionRequestHandler(
@@ -53,6 +72,7 @@ else {
       )
       session.defaultSession.setPermissionCheckHandler((contents,permission,requestingOrigin,details)=>contents===window?.webContents && details.isMainFrame!==false && allowFullscreen(permission,requestingOrigin,origin))
       // 无系统标题栏：窗口按钮由页面顶栏自绘，随页面滚动，不遮挡任何内容。
+      // macOS 保留系统红绿灯（hiddenInset），页面按平台避让。
       window = new BrowserWindow({
         width: 1500,
         height: 1000,
@@ -63,8 +83,8 @@ else {
         maximizable: true,
         fullscreenable: true,
         backgroundColor: '#13221f',
-        icon: path.join(root, 'dist', 'yingyu.ico'),
-        titleBarStyle: 'hidden',
+        icon: isMac ? undefined : path.join(root, 'dist', 'yingyu.ico'),
+        titleBarStyle: isMac ? 'hiddenInset' : 'hidden',
         webPreferences: {
           nodeIntegration: false,
           contextIsolation: true,

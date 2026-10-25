@@ -1,21 +1,47 @@
-MIT License
+幻屿（HUANYU）使用许可与免责声明
 
-Copyright (c) 2026 FineYi666
+版权所有 (c) 2026 FineYi666（GitHub: FineYi666/huanyu）
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+通过下载、安装、复制或使用本软件，即表示你已阅读并同意本声明的全部条款。
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
+一、授权范围
+
+1. 任何人可免费下载、安装并使用本软件，供个人非商业用途。
+2. 你可以原样（不修改、不增删、完整保留软件内的名称、图标、版权、
+   许可与免责声明）免费复制并分享本软件给他人，且不得借此收取任何
+   费用或报酬。
+3. 分享时应注明来源与作者：幻屿 HUANYU · FineYi666（GitHub: FineYi666/huanyu）。
+
+二、限制条款
+
+1. 禁止商用：不得将本软件或其任何部分用于任何商业目的，包括但不限
+   于出售、租赁、捆绑销售、付费下载、广告变现、商业演示，或作为任
+   何付费产品与服务的一部分。
+2. 禁止抄袭：不得将本软件的全部或部分代码、界面设计、素材、文案声
+   称为你自己或第三方的作品，不得去除、修改或遮盖软件内的名称、标
+   识、版权与许可信息后以任何形式分发。
+3. 禁止修改分发：不得对软件进行修改、逆向工程、反编译或二次开发后
+   公开分发衍生版本；出于个人学习目的的修改仅限自用，不得传播。
+4. 本许可未明示授予的一切权利，均由作者保留。
+
+三、免责声明
+
+1. 本软件按"现状"提供，不附带任何明示或默示的担保，包括但不限于
+   适销性、特定用途适用性与不侵权的担保。
+2. 本软件的部分功能依赖第三方公开接口（Bangumi、夸克网盘、Steam、
+   DeepSeek 等），相关内容的版权归属原权利方；使用者应自行遵守对
+   应服务的用户协议与法律法规，接口的可用性与变更不由作者控制。
+3. 在任何情况下，对于因使用或无法使用本软件而产生的任何直接、间
+   接、附带或后果性损失，作者均不承担责任。
+4. 使用者需自行确保使用本软件的行为符合所在地的法律法规。
+
+四、许可终止
+
+一旦违反本声明的任何条款，你获得的使用授权将自动终止，应立即停止
+使用并删除本软件的所有副本。作者保留追究相关责任的权利。
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+如需商业授权或其他合作，请通过 GitHub Issues 联系作者。
