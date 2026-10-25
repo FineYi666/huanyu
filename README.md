@@ -23,6 +23,8 @@
 
 ![新番片单](docs/screenshots/season-list.png)
 
+*（截图：霓虹夜城皮肤下的季度片单）*
+
 ## 🎬 影视库与播放
 
 - 导入本地视频（自动整理分集）或 **夸克网盘分享链接**，在线播放无需下载
@@ -47,17 +49,23 @@
 
 每套皮肤均配全屏场景背景、主题化滚动条与液态玻璃质感，明暗两种氛围随意切换：
 
-| 蓝金流光（暗） | 鎏金影厅（暗） |
+全部皮肤均以暗色氛围呈现：
+
+| 蓝金流光（暗） | 赤焰终端（暗） |
 | --- | --- |
-| ![蓝金流光](docs/screenshots/home.png) | ![鎏金影厅](docs/screenshots/skin-gilded.png) |
+| ![蓝金流光](docs/screenshots/skin-bluegold.png) | ![赤焰终端](docs/screenshots/skin-ember.png) |
 
-| 赤焰终端（暗） | 晨雾青屿（亮） |
+| 翡翠幻墨（暗） | 霓虹夜城（暗） |
 | --- | --- |
-| ![赤焰终端](docs/screenshots/skin-ember.png) | ![晨雾青屿](docs/screenshots/skin-grove.png) |
+| ![翡翠幻墨](docs/screenshots/skin-jade.png) | ![霓虹夜城](docs/screenshots/skin-neon.png) |
 
-皮肤选择器一览（七款皮肤实时预览）：
+| 鎏金影厅（暗） | 冰雪之境（暗） |
+| --- | --- |
+| ![鎏金影厅](docs/screenshots/skin-gilded.png) | ![冰雪之境](docs/screenshots/skin-glacier.png) |
 
-![皮肤选择器](docs/screenshots/skins.png)
+| 晨雾青屿（暗） | 皮肤选择器一览 |
+| --- | --- |
+| ![晨雾青屿](docs/screenshots/skin-grove.png) | ![皮肤选择器](docs/screenshots/skins.png) |
 
 ## 🔒 隐私优先
 

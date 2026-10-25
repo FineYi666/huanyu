@@ -256,7 +256,7 @@ export function GameDetailDialog({
     })
   const remove = () =>
     run(
-      () => api<AppState>(`/games/${game.id}`, undefined, 'DELETE'),
+      () => api<AppState>(`/games/${game.id}`, {}, 'DELETE'),
       () => {
         notify(`已将《${game.title}》移出游戏空间`)
         onClose()
