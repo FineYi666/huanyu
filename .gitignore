@@ -1,0 +1,13 @@
+node_modules/
+dist/
+release/
+tools/
+installer/staging/
+data/
+artifacts/
+docs/screenshots/*.tmp
+*.log
+.zcode/
+.env
+debug.log
+nul

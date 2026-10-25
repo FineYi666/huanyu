@@ -1,0 +1,84 @@
+{
+  "season": {
+    "id": "2026-Q4",
+    "label": "2026 秋季",
+    "start": "2026-10-01",
+    "end": "2027-01-01",
+    "today": "2026-10-24"
+  },
+  "updatedAt": "2026-10-23T16:02:56.026Z",
+  "slides": [
+    {
+      "id": "seasonal-623249",
+      "title": "龙珠超 比鲁斯",
+      "subtitle": "ドラゴンボール超 ビルス",
+      "description": "熟悉的热血冒险，全新的银幕表达。通过新增镜头、重绘画面与故事重构，再次走进《龙珠超》的世界。",
+      "image": "/artwork/seasonal-623249.jpg",
+      "score": 7.6,
+      "votes": 84,
+      "airDate": "2026-10-11",
+      "sourceUrl": "https://bgm.tv/subject/623249",
+      "source": "Bangumi"
+    },
+    {
+      "id": "seasonal-637802",
+      "title": "乱马1/2 第三季",
+      "subtitle": "らんま1/2 第3期",
+      "description": "一碰冷水就变成女孩的乱马，与未婚妻小茜的日常继续。格斗、误会与心动，交织成热热闹闹的青春喜剧。",
+      "image": "/artwork/seasonal-637802.jpg",
+      "score": 7.5,
+      "votes": 323,
+      "airDate": "2026-10-03",
+      "sourceUrl": "https://bgm.tv/subject/637802",
+      "source": "Bangumi"
+    },
+    {
+      "id": "seasonal-568244",
+      "title": "药屋少女的呢喃 第三季",
+      "subtitle": "薬屋のひとりごと 第3期",
+      "description": "猫猫重回花街药师的生活，一次日常饭食却引出新的疑点。宫廷里的灾厄预兆与神秘传闻，也让壬氏再次陷入难题。",
+      "image": "/artwork/seasonal-568244.jpg",
+      "score": 7.4,
+      "votes": 551,
+      "airDate": "2026-10-02",
+      "sourceUrl": "https://bgm.tv/subject/568244",
+      "source": "Bangumi"
+    },
+    {
+      "id": "seasonal-665390",
+      "title": "冰之城墙 第二季",
+      "subtitle": "氷の城壁 第2期",
+      "description": "本季新作，已经收获观众的关注与好评。查看作品资料，发现下一部想追的故事。",
+      "image": "/artwork/seasonal-665390.jpg",
+      "score": 7.4,
+      "votes": 492,
+      "airDate": "2026-10-01",
+      "sourceUrl": "https://bgm.tv/subject/665390",
+      "source": "Bangumi"
+    },
+    {
+      "id": "seasonal-555605",
+      "title": "青之芦苇 第二季",
+      "subtitle": "アオアシ Season 2",
+      "description": "青井苇人终于晋升青年队 A 队，却迎来更高强度的挑战。速度、技术与想象力，都将在新的赛场上重新接受考验。",
+      "image": "/artwork/seasonal-555605.jpg",
+      "score": 7.3,
+      "votes": 154,
+      "airDate": "2026-10-04",
+      "sourceUrl": "https://bgm.tv/subject/555605",
+      "source": "Bangumi"
+    },
+    {
+      "id": "seasonal-537738",
+      "title": "某暗部的少女共栖",
+      "subtitle": "とある暗部の少女共棲",
+      "description": "学园都市的平静背后，四名能力者少女组成了暗部组织「道具」。第五名少女的出现，将她们的日常与羁绊引向更深的黑暗。",
+      "image": "/artwork/seasonal-537738.jpg",
+      "score": 7.1,
+      "votes": 479,
+      "airDate": "2026-10-09",
+      "sourceUrl": "https://bgm.tv/subject/537738",
+      "source": "Bangumi"
+    }
+  ]
+}

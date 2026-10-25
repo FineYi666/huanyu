@@ -1,0 +1,459 @@
+/* Web approximation of a liquid-glass material, implemented with CSS.
+   Native Apple Liquid Glass is platform-specific. No external runtime is required. */
+:root[data-glass='true']
+  :is(
+    .button,
+    .icon-button,
+    .appearance-trigger,
+    .hero-button,
+    .nav-item,
+    .genre-tabs button,
+    .import-tabs button,
+    .theme-selector button,
+    .appearance-mode button,
+    .poster-favorite,
+    .settings-appearance-card,
+    .user-avatar
+  ) {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  border: 1px solid rgb(var(--glass-edge-rgb) / 0.42);
+  background:
+    linear-gradient(
+      145deg,
+      rgb(var(--glass-edge-rgb) / 0.2),
+      rgb(var(--glass-edge-rgb) / 0.025) 55%
+    ),
+    rgb(var(--glass-rgb) / 0.55);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.6),
+    inset 0 -1px 0 rgb(var(--accent-rgb) / 0.13),
+    inset 1px 0 0 rgb(var(--glass-edge-rgb) / 0.2),
+    0 3px 10px rgb(var(--accent-rgb) / 0.06);
+  color: var(--text);
+  border-radius: var(--skin-radius);
+  transition:
+    transform 160ms var(--ease-out),
+    opacity 160ms ease,
+    background-color 160ms ease,
+    color 160ms ease;
+}
+:root[data-glass='true']
+  :is(
+    .button,
+    .icon-button,
+    .appearance-trigger,
+    .hero-button,
+    .nav-item,
+    .genre-tabs button,
+    .import-tabs button,
+    .theme-selector button,
+    .appearance-mode button,
+    .poster-favorite,
+    .settings-appearance-card,
+    .user-avatar
+  )::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse at 15% -40%,
+    rgb(var(--glass-edge-rgb) / 0.55),
+    transparent 65%
+  );
+  opacity: 0.68;
+  transition: opacity 180ms ease;
+}
+:root[data-glass='true']
+  :is(
+    .button,
+    .icon-button,
+    .appearance-trigger,
+    .hero-button,
+    .nav-item,
+    .genre-tabs button,
+    .import-tabs button,
+    .theme-selector button,
+    .appearance-mode button,
+    .poster-favorite,
+    .settings-appearance-card,
+    .user-avatar
+  )::after {
+  content: '';
+  position: absolute;
+  inset: -70% -35%;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    110deg,
+    transparent 32%,
+    rgb(var(--glass-edge-rgb) / 0.35) 46%,
+    rgb(var(--glass-edge-rgb) / 0.1) 54%,
+    transparent 67%
+  );
+  transform: translate3d(-50%, 0, 0) rotate(-8deg);
+  opacity: 0;
+  transition:
+    transform 250ms var(--ease-out),
+    opacity 180ms ease;
+}
+:root[data-glass='true'] :is(.button.primary, .hero-button) {
+  color: var(--primary-ink);
+  background:
+    linear-gradient(150deg, rgb(var(--glass-edge-rgb) / 0.2), transparent 56%),
+    rgb(var(--accent-rgb) / 0.87);
+  border-color: rgb(var(--glass-edge-rgb) / 0.48);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.48),
+    inset 0 -1px 0 rgb(0 0 0 / 0.14),
+    0 4px 13px rgb(var(--accent-rgb) / 0.2);
+}
+:root[data-glass='true'] .hero-button {
+  --primary-ink: #24412e;
+  --accent-rgb: 217 240 191;
+  --glass-edge-rgb: 255 255 255;
+}
+:root[data-glass='true'][data-skin='aurora'] .hero-button {
+  --primary-ink: #14334a;
+  --accent-rgb: 164 217 245;
+}
+:root[data-glass='true'][data-skin='ember'] .hero-button {
+  --primary-ink: #3d2b19;
+  --accent-rgb: 246 192 135;
+}
+:root[data-glass='true'][data-skin='lunar'] .hero-button {
+  --primary-ink: #31415b;
+  --accent-rgb: 215 230 250;
+}
+:root[data-glass='true']
+  :is(.button.outline, .button.subtle, .icon-button, .appearance-trigger) {
+  color: var(--green);
+}
+:root[data-glass='true'] .nav-item {
+  border-radius: 17px;
+  background: rgb(var(--glass-rgb) / 0.13);
+  border-color: transparent;
+  box-shadow: none;
+}
+:root[data-glass='true'] .nav-item:not(.active)::before {
+  opacity: 0.08;
+}
+:root[data-glass='true'] .nav-item.active {
+  background:
+    linear-gradient(145deg, rgb(var(--glass-edge-rgb) / 0.24), transparent),
+    rgb(var(--accent-rgb) / 0.16);
+  border-color: rgb(var(--glass-edge-rgb) / 0.32);
+  color: var(--green);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.45),
+    0 5px 15px rgb(var(--accent-rgb) / 0.08);
+}
+:root[data-glass='true'] .nav-item.active > span {
+  color: inherit;
+  background: transparent;
+}
+:root[data-glass='true']
+  :is(.genre-tabs button, .theme-selector button, .appearance-mode button) {
+  border-radius: 9px;
+  background: rgb(var(--glass-rgb) / 0.17);
+  border-color: transparent;
+  box-shadow: none;
+  color: var(--secondary);
+}
+:root[data-glass='true']
+  :is(
+    .genre-tabs button.active,
+    .theme-selector button.active,
+    .appearance-mode button[aria-pressed='true'],
+    .import-tabs button.active
+  ) {
+  background: rgb(var(--accent-rgb) / 0.12);
+  border-color: rgb(var(--glass-edge-rgb) / 0.45);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.65),
+    0 3px 8px rgb(var(--accent-rgb) / 0.06);
+  color: var(--green);
+}
+:root[data-glass='true'] .import-tabs button {
+  border-radius: 9px;
+  background: transparent;
+  box-shadow: none;
+  border-color: transparent;
+}
+:root[data-glass='true'] :is(.icon-button, .poster-favorite) {
+  border-radius: 11px;
+}
+:root[data-glass='true'] .poster-favorite {
+  border-radius: 50%;
+  background: rgb(var(--panel-rgb) / 0.72);
+}
+:root[data-glass='true'] .user-avatar {
+  border-radius: 50%;
+}
+:root[data-glass='true'] :is(.dialog, .import-menu, .toast) {
+  background:
+    linear-gradient(145deg, rgb(var(--glass-edge-rgb) / 0.08), transparent 70%),
+    rgb(var(--panel-rgb) / 0.94);
+  -webkit-backdrop-filter: blur(28px) saturate(130%);
+  backdrop-filter: blur(28px) saturate(130%);
+  border-color: rgb(var(--glass-edge-rgb) / 0.32);
+  box-shadow:
+    inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.4),
+    var(--shadow);
+}
+:root[data-glass='true'] .dialog::backdrop {
+  background: rgb(12 22 30 / 0.4);
+  backdrop-filter: blur(8px);
+}
+:root[data-glass='true'] .search-box {
+  border: 1px solid rgb(var(--glass-edge-rgb) / 0.3);
+  background: rgb(var(--glass-rgb) / 0.42);
+  backdrop-filter: blur(16px);
+  box-shadow: inset 0 1px 0 rgb(var(--glass-edge-rgb) / 0.42);
+}
+:root[data-glass='true'] .switch {
+  border: 1px solid rgb(var(--glass-edge-rgb) / 0.28);
+  box-shadow: inset 0 1px 3px rgb(0 0 0 / 0.13);
+  padding: 2px;
+}
+:root[data-glass='true'] .switch i {
+  background: linear-gradient(145deg, #fff, #f8fff4cf);
+  box-shadow:
+    0 1px 3px rgb(0 0 0 / 0.2),
+    inset 0 1px #fff;
+}
+:root[data-glass='true'] .switch.on i {
+  transform: translateX(13px);
+}
+:root[data-glass='true'] .skin-choice {
+  box-shadow: inset 0 1px rgb(var(--glass-edge-rgb) / 0.45);
+}
+:root[data-glass='true'] .skin-choice.active {
+  box-shadow:
+    inset 0 1px rgb(var(--glass-edge-rgb) / 0.45),
+    0 0 0 2px rgb(var(--accent-rgb) / 0.14),
+    var(--skin-shadow);
+}
+:root[data-glass='true'] .button.danger-button {
+  color: #fff4ed;
+  background: linear-gradient(145deg, #c7a18c, #896353);
+}
+:root[data-glass='true'] .button:disabled,
+:root[data-glass='true'] .icon-button.disabled {
+  box-shadow: none;
+}
+
+/* Feedback is brief, interruptible, and limited to real pointer interaction. */
+@media (hover: hover) and (pointer: fine) {
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar
+    ):hover::after {
+    transform: translate3d(30%, 0, 0) rotate(-8deg);
+    opacity: 0.85;
+  }
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .genre-tabs button,
+      .import-tabs button,
+      .appearance-mode button,
+      .settings-appearance-card
+    ):hover {
+    transform: translate3d(0, -1px, 0);
+  }
+  :root[data-glass='true'] :is(.button.primary, .hero-button):hover {
+    background:
+      linear-gradient(
+        150deg,
+        rgb(var(--glass-edge-rgb) / 0.28),
+        transparent 56%
+      ),
+      rgb(var(--accent-rgb) / 0.91);
+  }
+}
+:root[data-glass='true']
+  :is(
+    .button,
+    .icon-button,
+    .appearance-trigger,
+    .hero-button,
+    .nav-item,
+    .genre-tabs button,
+    .import-tabs button,
+    .theme-selector button,
+    .appearance-mode button,
+    .settings-appearance-card,
+    .user-avatar
+  ):active:not(:disabled) {
+  transform: scale(0.97);
+  transition-duration: 100ms;
+}
+:root[data-glass='true'] .poster-favorite:active {
+  transform: scale(0.94);
+}
+:root[data-glass='true']
+  :is(
+    .button,
+    .appearance-trigger,
+    .hero-button,
+    .genre-tabs button
+  ):focus-visible {
+  outline: 2px solid var(--green);
+  outline-offset: 3px;
+}
+[data-skin='ember']:root[data-glass='true']
+  :is(
+    .button,
+    .icon-button,
+    .appearance-trigger,
+    .hero-button,
+    .genre-tabs button,
+    .nav-item
+  ) {
+  border-radius: 6px;
+}
+[data-skin='lunar']:root[data-glass='true'] :is(.button, .hero-button) {
+  border-radius: 18px;
+}
+
+/* A defined opaque material is available when blur or transparency is unsuitable. */
+@supports not (backdrop-filter: blur(1px)) {
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item.active,
+      .genre-tabs button.active,
+      .dialog,
+      .import-menu,
+      .toast,
+      .poster-favorite
+    ) {
+    background-color: var(--surface);
+  }
+  :root[data-glass='true'] :is(.button.primary, .hero-button) {
+    background-color: rgb(var(--accent-rgb));
+  }
+}
+@media (prefers-reduced-transparency: reduce), (prefers-contrast: more) {
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar,
+      .search-box,
+      .dialog,
+      .import-menu,
+      .toast
+    ) {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: var(--surface);
+    border-color: var(--secondary);
+    box-shadow: none;
+  }
+  :root[data-glass='true'] :is(.button.primary, .hero-button) {
+    background: rgb(var(--accent-rgb));
+    color: var(--primary-ink);
+  }
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar
+    )::before,
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar
+    )::after {
+    display: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar
+    ):is(:hover, :active) {
+    transform: none;
+  }
+  :root[data-glass='true']
+    :is(
+      .button,
+      .icon-button,
+      .appearance-trigger,
+      .hero-button,
+      .nav-item,
+      .genre-tabs button,
+      .import-tabs button,
+      .theme-selector button,
+      .appearance-mode button,
+      .poster-favorite,
+      .settings-appearance-card,
+      .user-avatar
+    )::after {
+    display: none;
+  }
+}

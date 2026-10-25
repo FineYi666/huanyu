@@ -1,0 +1,166 @@
+/* Shared cinema layout. Skin tokens continue to control color and glass. */
+html .app-shell { padding: 0; }
+html .app-shell .main-shell { margin: 0; width: 100%; max-width: none; min-height: 100dvh; border: 0; border-radius: 0; background: rgb(var(--panel-rgb) / .68); box-shadow: none; backdrop-filter: blur(28px) saturate(115%); overflow: clip; }
+html .app-shell .topbar { height: 88px; padding: 0 30px; background: transparent; gap: 24px; border-bottom: 1px solid var(--border); }
+html .app-shell .wordmark { font-size: 21px; letter-spacing: 2px; flex-shrink: 0; }
+html .app-shell .wordmark { text-decoration: none; color: var(--text); gap: 9px; }
+html .app-shell .brand-symbol { width: 35px; height: 35px; color: var(--green); flex-shrink: 0; }
+html .app-shell .wordmark > span { font-size: 8px; letter-spacing: 2px; margin-left: 8px; }
+html .app-shell .wordmark i, html .app-shell .wordmark small { display: none; }
+html .app-shell .main-nav { flex-direction: row; width: auto; gap: 5px; margin-right: auto; }
+html .app-shell .main-nav .nav-item { width: auto; min-height: 39px; padding: 0 17px; flex-direction: row; gap: 6px; border-radius: 24px; white-space: nowrap; }
+html .app-shell .main-nav .nav-item > span { display: none; }
+html .app-shell .main-nav .nav-item small { font-size: 12px; line-height: 1.4; letter-spacing: 0; }
+html .app-shell .topbar-actions { gap: 11px; }
+html .app-shell .search-box { width: 210px; height: 38px; border-radius: 22px; background: rgb(var(--glass-rgb) / .5); border: 1px solid var(--border); }
+html .app-shell .search-box kbd { display: none; }
+html .app-shell .local-status, html .app-shell .header-divider { display: none; }
+html .app-shell .topbar-actions > .settings-trigger { display: grid; width: 38px; height: 38px; color: var(--green); border: 1px solid var(--border); border-radius: 11px; background: rgb(var(--glass-rgb) / .5); flex-shrink: 0; }
+html .app-shell .wordmark:focus-visible { outline: 2px solid var(--green); outline-offset: 5px; border-radius: 8px; }
+html .app-shell main { padding: 28px 30px 10px; max-width: 1920px; margin: 0 auto; }
+html .app-shell .page-heading { margin: 0 0 26px; padding: 0; min-height: 0; align-items: center; }
+html .app-shell .page-heading h1 { font-size: 27px; letter-spacing: -.8px; font-weight: 650; }
+html .app-shell .page-heading p { font-size: 12px; margin-top: 7px; }
+html .app-shell .seasonal-page-heading { margin-bottom: 22px; }
+html .app-shell .seasonal-page-heading h1 { font-size: 23px; }
+html .app-shell .page-eyebrow { display: none; }
+html .app-shell .import-main { padding: 11px 16px; font-size: 12px; border-radius: 22px; }
+.season-feature-layout { display: grid; grid-template-columns: 250px minmax(0,1fr); gap: 24px; margin-bottom: 32px; align-items: stretch; }
+.watch-shelf { border-radius: 22px; background: rgb(var(--glass-rgb) / .4); border: 1px solid rgb(var(--glass-edge-rgb) / .38); padding: 20px 16px 14px; box-shadow: inset 0 1px 0 rgb(var(--glass-edge-rgb) / .35); min-width: 0; }
+.shelf-heading { display: flex; gap: 7px; align-items: center; color: var(--green); margin-bottom: 14px; }
+.shelf-heading h2 { font-size: 13px; color: var(--text); font-weight: 600; }
+.shelf-heading > span { margin-left: auto; font-size: 9px; color: var(--secondary); letter-spacing: .4px; }
+.shelf-picks { margin-top: 22px; padding-top: 17px; border-top: 1px solid var(--border); }
+.continue-item { display: flex; gap: 10px; width: 100%; text-align: left; align-items: center; margin: 10px 0; color: var(--text); }
+.continue-item > .poster-art { width: 39px; height: 51px; border-radius: 9px; flex: 0 0 auto; }
+.continue-copy { min-width: 0; flex: 1; }
+.continue-copy strong, .shelf-pick strong { display: block; font-size: 11px; font-weight: 550; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.7; }
+.continue-copy small { display: block; font-size: 9px; color: var(--secondary); margin-top: 3px; }
+.continue-progress { height: 3px; background: var(--border); display: block; margin-top: 7px; border-radius: 4px; overflow: hidden; }
+.continue-progress i { display: block; height: 100%; background: var(--green); border-radius: inherit; }
+.continue-item > svg { color: var(--green); flex-shrink: 0; }
+.shelf-empty { padding: 10px 2px 0; color: var(--green); }
+.shelf-empty p { font-size: 11px; color: var(--text); margin: 10px 0 6px; line-height: 1.8; }
+.shelf-empty small { font-size: 10px; line-height: 1.8; color: var(--secondary); }
+.shelf-pick { display: flex; align-items: center; width: 100%; text-align: left; gap: 9px; margin: 11px 0; }
+.pick-rank { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.shelf-pick > .poster-art { width: 32px; height: 43px; border-radius: 6px; flex-shrink: 0; }
+.shelf-pick > span:nth-last-child(2) { flex: 1; min-width: 0; }
+.shelf-pick small { display: flex; gap: 4px; align-items: center; color: var(--green); font-size: 10px; margin-top: 3px; }
+.shelf-pick small i { font-size: 8px; font-style: normal; color: var(--secondary); margin-left: 2px; }
+.shelf-pick > svg { color: var(--secondary); flex-shrink: 0; }
+.shelf-note { font-size: 9px; color: var(--secondary); margin-top: 15px; line-height: 1.7; }
+html .app-shell .new-season-page .hero.carousel { height: 100%; min-height: 410px; margin: 0; border-radius: 23px; border: 1px solid #ffffff20; }
+html .app-shell .new-season-page .hero.carousel .hero-copy { top: 42px; left: 34px; width: 55%; }
+html .app-shell .new-season-page .hero.carousel .hero-copy h2 { font-size: clamp(26px, 2.4vw, 37px); line-height: 1.35; margin: 18px 0 10px; letter-spacing: -.7px; }
+html .app-shell .new-season-page .hero.carousel .hero-copy p { display: -webkit-box; font-size: 12px; -webkit-line-clamp: 3; margin-top: 18px; }
+html .app-shell .new-season-page .hero-rating { margin-top: 19px; gap: 7px; }
+html .app-shell .new-season-page .hero-poster-stage { right: 6%; top: 39px; bottom: 66px; width: 190px; }
+html .app-shell .hero.carousel .seasonal-slide .hero-image { filter: blur(8px) saturate(.95); opacity: .8; }
+html .app-shell .new-season-page .hero-cta-row { margin-top: 21px; }
+html .app-shell .new-season-page .hero-credit { bottom: 55px; left: 34px; font-size: 8px; }
+html .app-shell .hero .carousel-controls { left: 30px; right: 24px; bottom: 17px; }
+html .app-shell .hero-counter { right: 25px; top: 20px; font-size: 11px; }
+html .app-shell .season-heading { margin-bottom: 18px; }
+html .app-shell .season-heading h2 { font-size: 22px; letter-spacing: -.6px; }
+html .app-shell .season-heading p { display: none; }
+html .app-shell .season-kicker { font-size: 9px; letter-spacing: 1.5px; margin-bottom: 9px; }
+html .app-shell .season-heading > button { border-radius: 20px; font-size: 11px; padding: 9px 14px; }
+html .app-shell .season-toolbar { margin-bottom: 22px; padding-bottom: 16px; }
+html .app-shell .season-grid { grid-template-columns: repeat(6,minmax(0,1fr)); gap: 26px 18px; }
+html .app-shell .season-card { background: transparent; padding: 0; border: 0; box-shadow: none; }
+html .app-shell .season-poster { aspect-ratio: 3/4; border-radius: 17px; box-shadow: 0 6px 18px rgb(var(--accent-rgb) / .08); }
+.poster-art { display: block; position: relative; width: 100%; height: 100%; overflow: hidden; }
+.poster-art > img { width: 100%; height: 100%; object-fit: cover; }
+.poster-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; padding: 18px; background: radial-gradient(ellipse at 80% 10%, rgb(var(--accent-rgb) / .19), transparent 70%), var(--subtle); color: var(--green); }
+.poster-placeholder strong { color: var(--text); font-size: 16px; font-weight: 550; line-height: 1.7; text-align: center; text-wrap: balance; }
+.poster-placeholder small { font-size: 8px; letter-spacing: 2px; color: var(--secondary); }
+.shelf-pick .poster-placeholder, .continue-item .poster-placeholder { padding: 3px; gap: 0; }
+.shelf-pick .poster-placeholder strong, .shelf-pick .poster-placeholder small, .continue-item .poster-placeholder strong, .continue-item .poster-placeholder small { display: none; }
+html .app-shell .season-poster > .poster-art { transition: transform .3s ease; }
+html .app-shell .season-poster:hover > .poster-art { transform: scale(1.035); }
+html .app-shell .season-platform, html .app-shell .season-status { font-size: 8px; padding: 4px 6px; top: 9px; border-radius: 6px; }
+html .app-shell .season-platform { left: 8px; }
+html .app-shell .season-status { right: 8px; }
+html .app-shell .season-card-meta { margin: 11px 0 5px; font-size: 9px; gap: 6px; }
+html .app-shell .season-card h3 { font-size: 12px; line-height: 1.65; min-height: 40px; }
+html .app-shell .season-original { font-size: 9px; margin-top: 2px; }
+html .app-shell .season-find { margin-top: 12px; font-size: 10px; min-height: 32px; padding: 7px 10px; border-radius: 19px; }
+html .app-shell .season-import-actions { gap: 5px; margin-top: 7px; }
+html .app-shell .season-import-actions button { border-radius: 8px; font-size: 9px; padding: 8px 2px; gap: 4px; }
+.catalog-notice { display: flex; align-items: center; gap: 10px; font-size: 11px; color: var(--secondary); padding: 13px 16px; border: 1px solid var(--border); border-radius: 12px; background: rgb(var(--glass-rgb) / .4); margin-bottom: 20px; line-height: 1.8; }
+.catalog-notice > svg { flex-shrink: 0; color: var(--green); }
+.catalog-notice > span { flex: 1; }
+.catalog-notice button { color: var(--green); font-size: 11px; white-space: nowrap; }
+html .app-shell .media-grid { gap: 25px 20px; }
+@media(max-width: 1400px) {
+  html .app-shell .topbar { padding: 0 24px; gap: 18px; }
+  html .app-shell .main-nav .nav-item { padding: 0 12px; }
+  html .app-shell .wordmark > span { display: none; }
+  html .app-shell .search-box { width: 185px; }
+  html .app-shell main { padding: 24px; }
+  .season-feature-layout { grid-template-columns: 220px minmax(0,1fr); gap: 19px; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy { left: 28px; width: 54%; top: 32px; }
+  html .app-shell .new-season-page .hero-poster-stage { width: 155px; right: 5%; top: 57px; bottom: 77px; }
+  html .app-shell .new-season-page .hero-credit { left: 28px; }
+  html .app-shell .season-grid { grid-template-columns: repeat(5,minmax(0,1fr)); gap: 25px 16px; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy p { -webkit-line-clamp: 2; }
+}
+@media(max-width: 1100px) {
+  html .app-shell .topbar { gap: 12px; }
+  html .app-shell .main-nav .nav-item { padding: 0 9px; }
+  html .app-shell .topbar-actions { gap: 8px; }
+  html .app-shell .search-box { width: 150px; }
+  html .app-shell .appearance-trigger span { display: none; }
+  .season-feature-layout { grid-template-columns: 195px minmax(0,1fr); gap: 16px; }
+  .watch-shelf { padding: 17px 12px; }
+  html .app-shell .new-season-page .hero-poster-stage { width: 125px; right: 6%; top: 82px; bottom: 88px; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy h2 { font-size: 26px; }
+  html .app-shell .hero-source { display: none; }
+  html .app-shell .hero-rating { flex-wrap: wrap; }
+  html .app-shell .season-grid { grid-template-columns: repeat(4,minmax(0,1fr)); }
+}
+@media(max-width: 800px) {
+  html .app-shell .topbar { height: auto; padding: 15px 18px; flex-wrap: wrap; gap: 12px; }
+  html .app-shell .wordmark { font-size: 19px; }
+  html .app-shell .topbar-actions { margin-left: auto; }
+  html .app-shell .main-nav { order: 3; width: 100%; justify-content: space-between; }
+  html .app-shell .main-nav .nav-item { min-height: 34px; padding: 0 12px; }
+  html .app-shell main { padding: 20px 18px; }
+  html .app-shell .seasonal-page-heading p { max-width: 260px; line-height: 1.8; }
+  html .app-shell .page-heading h1 { font-size: 23px; }
+  html .app-shell .import-main { font-size: 10px; padding: 10px; gap: 4px; }
+  .season-feature-layout { grid-template-columns: minmax(0,1fr); }
+  .watch-shelf { order: 2; }
+  .shelf-picks, .shelf-pick, .shelf-note, .shelf-empty { display: none; }
+  .watch-shelf:has(.shelf-empty) { display: none; }
+  html .app-shell .new-season-page .hero.carousel { min-height: 345px; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy { width: 57%; top: 28px; left: 24px; }
+  html .app-shell .new-season-page .hero-poster-stage { width: 115px; right: 5%; top: 62px; bottom: 80px; }
+  html .app-shell .new-season-page .hero-credit { left: 24px; font-size: 7px; }
+  html .app-shell .season-grid { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 23px 12px; }
+  html .app-shell .season-heading h2 { font-size: 19px; }
+  html .app-shell .season-heading h2 > span { margin-left: 7px; }
+  html .app-shell .season-platform { display: none; }
+}
+@media(max-width: 480px) {
+  html .app-shell .season-grid { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  html .app-shell .topbar { gap: 10px; padding-inline: 14px; }
+  html .app-shell .wordmark { font-size: 17px; gap: 6px; letter-spacing: 1px; }
+  html .app-shell .brand-symbol { width: 29px; height: 29px; }
+  html .app-shell .topbar-actions { flex: 1; min-width: 0; gap: 6px; }
+  html .app-shell .search-box { width: auto; min-width: 0; flex: 1; padding: 0 9px; gap: 5px; }
+  html .app-shell .search-box input { min-width: 0; }
+  html .app-shell .appearance-trigger { padding-inline: 9px; }
+  html .app-shell .main-nav .nav-item { padding: 0 8px; }
+  html .app-shell .main-nav .nav-item small { font-size: 11px; }
+  html .app-shell .new-season-page .hero-poster-stage { opacity: .55; width: 110px; right: 3%; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy { width: 76%; }
+  html .app-shell .new-season-page .hero.carousel .hero-copy p { max-width: 80%; }
+  html .app-shell .new-season-page .hero-original-title { max-width: 75%; }
+  html .app-shell .season-sort { gap: 4px; }
+  html .app-shell .season-sort select { padding: 7px; }
+  html .app-shell .genre-tabs { gap: 3px; }
+  html .app-shell .genre-tabs button { padding: 8px; font-size: 10px; }
+}
+@media(prefers-reduced-motion: reduce) { html .app-shell .season-poster > .poster-art { transition: none; } html .app-shell .season-poster:hover > .poster-art { transform: none; } }

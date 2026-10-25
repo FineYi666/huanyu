@@ -1,0 +1,137 @@
+.quark-qr-connect {
+  margin-top: 18px;
+}
+.quark-qr-intro {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgb(var(--accent-rgb) / 0.06);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 13px;
+}
+.quark-qr-intro > span {
+  color: var(--green);
+  display: grid;
+  place-items: center;
+  width: 32px;
+}
+.quark-qr-intro > div {
+  flex: 1;
+}
+.quark-qr-intro strong {
+  font-size: 11px;
+  font-weight: 550;
+}
+.quark-qr-intro p {
+  font-size: 9px;
+  line-height: 1.7;
+  color: var(--secondary);
+  margin-top: 5px;
+}
+.quark-qr-intro .button {
+  font-size: 10px;
+  padding: 9px 11px;
+  flex-shrink: 0;
+}
+.quark-qr-panel {
+  margin-top: 12px;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 25px 15px 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 13px;
+}
+:root .quark-qr-connect .quark-qr-panel > .quark-qr-close {
+  position: absolute;
+  right: 9px;
+  top: 9px;
+  width: 26px;
+  height: 26px;
+}
+.quark-qr-image {
+  background: #fff;
+  width: 220px;
+  height: 220px;
+  padding: 5px;
+  border-radius: 9px;
+  position: relative;
+}
+.quark-qr-image img {
+  object-fit: contain;
+  image-rendering: pixelated;
+  border-radius: 0;
+}
+.quark-qr-image.inactive img {
+  opacity: 0.08;
+}
+.quark-qr-image > span {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #34404a;
+  font-size: 13px;
+}
+.quark-qr-caption {
+  text-align: center;
+  padding: 0 10px;
+}
+.quark-qr-caption strong {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.8;
+}
+.quark-qr-caption p {
+  font-size: 9px;
+  line-height: 1.8;
+  color: var(--secondary);
+  margin-top: 5px;
+}
+.quark-qr-caption .text-button {
+  margin: 10px auto 0;
+  font-size: 10px;
+}
+.quark-qr-privacy {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 8px;
+  line-height: 1.8;
+  color: var(--secondary);
+  margin-top: 10px;
+}
+.quark-qr-result {
+  min-height: 210px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 13px;
+  color: var(--green);
+}
+.quark-qr-result strong {
+  font-size: 15px;
+  font-weight: 550;
+}
+.quark-qr-result p {
+  font-size: 10px;
+  color: var(--secondary);
+}
+@media (max-width: 620px) {
+  .quark-qr-intro {
+    gap: 7px;
+    padding: 11px;
+    flex-wrap: wrap;
+  }
+  .quark-qr-intro > div {
+    min-width: 160px;
+  }
+  .quark-qr-intro .button {
+    margin-left: auto;
+  }
+}

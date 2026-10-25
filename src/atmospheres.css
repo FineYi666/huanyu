@@ -1,0 +1,253 @@
+/* Ambient decoration layers for the synth / gilded / glacier skins.
+   Each component mounts only while its skin is active (see App.tsx). */
+
+/* SYNTHWAVE HORIZON — striped retro sun, twinkling stars, highway grid. */
+.synth-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.synth-stars {
+  position: absolute;
+  inset: 0;
+}
+.synth-stars > i {
+  position: absolute;
+  display: block;
+  border-radius: 50%;
+  background: #ffd9ef;
+  box-shadow: 0 0 6px #ff8ac9aa;
+  opacity: 0.55;
+}
+.synth-sun {
+  position: absolute;
+  top: 4%;
+  left: 50%;
+  width: 340px;
+  height: 340px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: linear-gradient(180deg, #ffd166, #ff5fb8 58%, #b13fd4);
+  -webkit-mask-image: repeating-linear-gradient(
+    0deg,
+    #000 0 14px,
+    transparent 14px 20px
+  );
+  mask-image: repeating-linear-gradient(
+    0deg,
+    #000 0 14px,
+    transparent 14px 20px
+  );
+  opacity: 0.16;
+  filter: blur(0.4px);
+}
+.synth-grid {
+  position: absolute;
+  width: 170%;
+  height: 46%;
+  left: -35%;
+  bottom: -22%;
+  transform: perspective(420px) rotateX(56deg);
+  transform-origin: center top;
+  background-image:
+    linear-gradient(#ff5fb81c 1px, transparent 1px),
+    linear-gradient(90deg, #59c2f216 1px, transparent 1px);
+  background-size: 72px 46px;
+  mask-image: linear-gradient(transparent, #000 42%, transparent);
+}
+.synth-corner-label,
+.glacier-corner-label {
+  position: absolute;
+  bottom: 23px;
+  right: 34px;
+  font:
+    8px 'Consolas',
+    monospace;
+  letter-spacing: 3px;
+  color: #b49ad64d;
+}
+.synth-corner-label span,
+.glacier-corner-label span {
+  display: block;
+  letter-spacing: 2px;
+  margin-top: 7px;
+  text-align: right;
+  font-size: 7px;
+}
+
+/* GILDED CINEMA — gilded waves scene with floating gold dust. */
+.gilded-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.gilded-dust {
+  position: absolute;
+  inset: 0;
+}
+.gilded-dust > i {
+  position: absolute;
+  top: 100%;
+  display: block;
+  border-radius: 50%;
+  background: #e8ca7f;
+  box-shadow: 0 0 6px #d9b45c99;
+  opacity: 0;
+}
+.glacier-corner-label {
+  color: #8ba7bb4d;
+}
+
+/* GLACIER LIGHT — frost glow and drifting snow. */
+.glacier-atmosphere {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+}
+.glacier-frost {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 12% 100%, #dceefc66, transparent 42%),
+    radial-gradient(ellipse at 88% 0%, #ffffff99, transparent 38%);
+}
+.glacier-snow {
+  position: absolute;
+  inset: 0;
+}
+.glacier-snow > i {
+  position: absolute;
+  top: -3%;
+  display: block;
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 0 5px #cfe8f7;
+  opacity: 0.7;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .synth-stars > i {
+    animation: synth-twinkle 5.5s ease-in-out infinite alternate;
+  }
+  .synth-grid {
+    animation: synth-cruise 7s linear infinite;
+  }
+  .synth-sun {
+    animation: synth-breathe 8s ease-in-out infinite alternate;
+  }
+  .gilded-dust > i {
+    animation: gilded-float linear infinite;
+  }
+  .glacier-snow > i {
+    animation: glacier-snowfall linear infinite;
+  }
+}
+@keyframes synth-twinkle {
+  from {
+    opacity: 0.2;
+  }
+  to {
+    opacity: 0.9;
+  }
+}
+@keyframes synth-cruise {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      0 46px,
+      36px 0;
+  }
+}
+@keyframes synth-breathe {
+  from {
+    opacity: 0.12;
+  }
+  to {
+    opacity: 0.22;
+  }
+}
+@keyframes gilded-float {
+  0% {
+    transform: translateY(0);
+    opacity: 0;
+  }
+  12% {
+    opacity: 0.65;
+  }
+  88% {
+    opacity: 0.35;
+  }
+  100% {
+    transform: translateY(-108vh);
+    opacity: 0;
+  }
+}
+@keyframes glacier-snowfall {
+  0% {
+    transform: translate(0, 0);
+    opacity: 0;
+  }
+  8% {
+    opacity: 0.75;
+  }
+  90% {
+    opacity: 0.6;
+  }
+  100% {
+    transform: translate(var(--snow-drift, 12px), 106vh);
+    opacity: 0;
+  }
+}
+
+@media (max-width: 620px) {
+  .synth-sun {
+    width: 210px;
+    height: 210px;
+    opacity: 0.12;
+  }
+  .synth-corner-label,
+  .glacier-corner-label {
+    display: none;
+  }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .synth-atmosphere,
+  .gilded-atmosphere,
+  .glacier-atmosphere {
+    opacity: 0.25;
+  }
+}
+@media (forced-colors: active) {
+  .synth-atmosphere,
+  .gilded-atmosphere,
+  .glacier-atmosphere {
+    display: none;
+  }
+}
+
+/* Hero-button palettes that must out-rank the liquid-glass defaults. */
+:root[data-glass='true'][data-skin='synth'] .hero-button {
+  --primary-ink: #2a0f24;
+  --accent-rgb: 255 95 184;
+  --glass-edge-rgb: 255 168 224;
+}
+:root[data-glass='true'][data-skin='gilded'] .hero-button {
+  --primary-ink: #241a08;
+  --accent-rgb: 238 194 95;
+  --glass-edge-rgb: 242 214 145;
+}
+:root[data-glass='true'][data-skin='glacier'] .hero-button {
+  --primary-ink: #0b2434;
+  --accent-rgb: 190 232 255;
+  --glass-edge-rgb: 255 255 255;
+}

@@ -1,0 +1,176 @@
+.subtitle-panel {
+  margin: 15px 0 0;
+  padding: 17px 19px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--surface) 72%, transparent);
+  backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--text) 5%, transparent);
+}
+.subtitle-heading,
+.subtitle-heading > span,
+.subtitle-heading > div,
+.subtitle-controls,
+.subtitle-delay {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.subtitle-heading {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+.subtitle-heading > span {
+  color: var(--green);
+}
+.subtitle-heading strong {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+.subtitle-heading i {
+  font-size: 10px;
+  font-style: normal;
+  color: var(--secondary);
+}
+.subtitle-heading .button {
+  font-size: 11px;
+  padding: 8px 10px;
+  min-height: 30px;
+  gap: 6px;
+}
+.subtitle-status {
+  font-size: 11px;
+  line-height: 1.8;
+  color: var(--secondary);
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+.subtitle-controls {
+  gap: 18px;
+  flex-wrap: wrap;
+}
+.subtitle-controls > label {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex: 1;
+  min-width: 200px;
+}
+.subtitle-controls label > span,
+.subtitle-delay > span {
+  font-size: 10px;
+  color: var(--secondary);
+  white-space: nowrap;
+}
+.subtitle-controls select {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--subtle);
+  color: var(--text);
+  padding: 8px 9px;
+  font-size: 11px;
+  min-width: 0;
+  max-width: 100%;
+  flex: 1;
+}
+.subtitle-delay {
+  gap: 6px;
+}
+.subtitle-delay button {
+  border: 1px solid var(--border);
+  background: var(--subtle);
+  color: var(--text);
+  border-radius: 7px;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+}
+.subtitle-delay output {
+  font-size: 11px;
+  min-width: 57px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+}
+.subtitle-delay button.subtitle-reset {
+  width: auto;
+  padding: 0 8px;
+  font-size: 10px;
+}
+.subtitle-hint {
+  font-size: 10px;
+  line-height: 1.9;
+  color: var(--secondary);
+  opacity: 0.8;
+  margin-top: 11px;
+}
+.subtitle-hint a {
+  margin-left: 8px;
+  color: var(--green);
+}
+.video-stage video::cue {
+  color: #fff;
+  background: rgba(9, 15, 18, 0.65);
+  font-family: 'Microsoft YaHei', 'PingFang SC', sans-serif;
+  font-size: 1.15em;
+  text-shadow: 0 1px 3px #000;
+}
+.subtitle-appearance { margin: 16px 0 0; padding: 15px 18px; border: 1px solid var(--border); border-radius: 12px; background: color-mix(in srgb, var(--surface) 72%, transparent); }
+.subtitle-appearance summary { display: flex; align-items: center; gap: 8px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--text); }
+.subtitle-appearance summary > span { margin-left: auto; font-size: 10px; font-weight: 400; color: var(--secondary); }
+.subtitle-style-sliders { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 22px; margin-top: 16px; }
+.subtitle-style-sliders label > span, .subtitle-style-sliders small { display: flex; justify-content: space-between; align-items: center; font-size: 11px; color: var(--secondary); }
+.subtitle-style-sliders output { color: var(--text); font-variant-numeric: tabular-nums; }
+.subtitle-style-sliders input { width: 100%; accent-color: var(--green); cursor: pointer; margin: 10px 0 5px; min-height: 20px; }
+.subtitle-style-sliders small { font-size: 9px; opacity: .75; }
+.subtitle-style-presets { display: flex; align-items: center; justify-content: space-between; margin-top: 12px; gap: 10px; }
+.subtitle-style-presets > div { display: flex; gap: 5px; }
+.subtitle-style-presets .button { min-height: 25px; padding: 5px 12px; font-size: 10px; }
+.subtitle-style-presets .text-button { font-size: 10px; gap: 5px; }
+.subtitle-appearance > p { margin: 12px 0 0; font-size: 10px; color: var(--secondary); line-height: 1.7; }
+@media(max-width:600px){ .subtitle-style-sliders{grid-template-columns:1fr;gap:12px;} }
+@media (max-width: 800px) {
+  .subtitle-panel {
+    padding: 14px;
+  }
+  .subtitle-controls > label {
+    width: 100%;
+    min-width: 0;
+  }
+  .subtitle-delay {
+    width: 100%;
+  }
+}
+@media (max-height: 850px) {
+  .player-dialog .video-stage {
+    height: 45vh;
+    aspect-ratio: auto;
+  }
+}
+.playback-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin: 16px 0;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--green) 5%, transparent);
+}
+.embedded-subtitle-panel { margin-bottom: 12px; }
+.embedded-subtitle-panel .subtitle-controls select { min-width: min(100%, 300px); }
+.subtitle-master, .playback-option-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.subtitle-master strong { display: block; font-size: 12px; }
+.subtitle-master small { display: block; color: var(--secondary); font-size: 10px; margin-top: 4px; }
+.playback-option-actions .button { font-size: 11px; padding: 10px 13px; min-height: 36px; }
+.player-dialog.player-expanded { width: 100vw; max-width: 100vw; height: 100dvh; max-height: 100dvh; margin: 0; border-radius: 0; }
+.player-dialog.player-expanded .video-stage { height: min(70dvh, calc((100vw - 340px) * .5625)); aspect-ratio: auto; }
+.player-dialog .video-stage:fullscreen { width: 100vw; height: 100dvh; max-height: none; border: 0; border-radius: 0; aspect-ratio: auto; background: #000; }
+.video-stage:fullscreen video { width: 100%; height: 100%; object-fit: contain; }
+.fullscreen-exit { position: absolute; top: 20px; right: 20px; z-index: 3; color: #fff; background: #121821b8; backdrop-filter: blur(15px); opacity: .45; }
+.fullscreen-exit:hover, .fullscreen-exit:focus-visible { opacity: 1; }
+@media (max-width: 800px) { .player-dialog.player-expanded .video-stage { height: 55dvh; } }

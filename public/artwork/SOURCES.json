@@ -1,0 +1,84 @@
+[
+  {
+    "file": "frieren.jpg",
+    "work": "葬送的芙莉莲",
+    "source": "https://bgm.tv/subject/400602",
+    "image": "https://lain.bgm.tv/pic/cover/l/13/c5/400602_ZI8Y9.jpg"
+  },
+  {
+    "file": "apothecary.jpg",
+    "work": "药屋少女的呢喃",
+    "source": "https://bgm.tv/subject/420628",
+    "image": "https://lain.bgm.tv/pic/cover/l/fe/31/420628_2ZEz0.jpg"
+  },
+  {
+    "file": "bocchi.jpg",
+    "work": "孤独摇滚！",
+    "source": "https://bgm.tv/subject/328609",
+    "image": "https://lain.bgm.tv/pic/cover/l/e2/e7/328609_2EHLJ.jpg"
+  },
+  {
+    "file": "dungeon.jpg",
+    "work": "迷宫饭",
+    "source": "https://bgm.tv/subject/395378",
+    "image": "https://lain.bgm.tv/pic/cover/l/c5/88/395378_jztpO.jpg"
+  },
+  {
+    "file": "spy.jpg",
+    "work": "间谍过家家",
+    "source": "https://bgm.tv/subject/329906",
+    "image": "https://lain.bgm.tv/pic/cover/l/de/4a/329906_hmtVD.jpg"
+  },
+  {
+    "file": "violet.jpg",
+    "work": "紫罗兰永恒花园",
+    "source": "https://bgm.tv/subject/183878",
+    "image": "https://lain.bgm.tv/pic/cover/l/1e/e2/183878_Fef1o.jpg"
+  },
+  {
+    "file": "natsume.jpg",
+    "work": "夏目友人帐",
+    "source": "https://bgm.tv/subject/259",
+    "image": "https://lain.bgm.tv/pic/cover/l/cf/a0/259_7C5D9.jpg"
+  },
+  {
+    "file": "yourname.jpg",
+    "work": "你的名字。",
+    "source": "https://bgm.tv/subject/160209",
+    "image": "https://lain.bgm.tv/pic/cover/l/20/15/160209_2UzU8.jpg"
+  },
+  {
+    "file": "haikyu.jpg",
+    "work": "排球少年",
+    "source": "https://bgm.tv/subject/84171",
+    "image": "https://lain.bgm.tv/pic/cover/l/91/d8/84171_5KpYZ.jpg"
+  },
+  {
+    "file": "chihiro.jpg",
+    "work": "千与千寻",
+    "source": "https://bgm.tv/subject/311",
+    "image": "https://lain.bgm.tv/pic/cover/l/9d/fc/311_GAg3x.jpg"
+  },
+  {
+    "file": "howls.jpg",
+    "work": "哈尔的移动城堡",
+    "source": "https://bgm.tv/subject/312",
+    "image": "https://lain.bgm.tv/pic/cover/l/95/0a/312_LmAan.jpg"
+  },
+  {
+    "file": "yuru.jpg",
+    "work": "摇曳露营△",
+    "source": "https://bgm.tv/subject/207195",
+    "image": "https://lain.bgm.tv/pic/cover/l/18/bc/207195_2Cp3o.jpg"
+  },
+  {
+    "file": "hero-howls.jpg",
+    "source": "https://www.ghibli.jp/works/howl/",
+    "image": "https://www.ghibli.jp/gallery/howl048.jpg"
+  },
+  {
+    "file": "hero-chihiro.jpg",
+    "source": "https://www.ghibli.jp/works/chihiro/",
+    "image": "https://www.ghibli.jp/gallery/chihiro043.jpg"
+  }
+]

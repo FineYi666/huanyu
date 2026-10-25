@@ -1,0 +1,254 @@
+.deepseek-section {
+  margin: 19px 0 22px;
+}
+.deepseek-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 19px;
+}
+.deepseek-icon {
+  width: 43px;
+  height: 43px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--soft-mint);
+  color: var(--green);
+  flex-shrink: 0;
+}
+.deepseek-heading > div {
+  flex: 1;
+}
+.deepseek-heading strong {
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.2px;
+}
+.deepseek-heading strong > span {
+  display: block;
+  font-size: 9px;
+  font-weight: 400;
+  color: var(--secondary);
+  letter-spacing: 0.4px;
+  margin-top: 5px;
+}
+.deepseek-heading p {
+  font-size: 9px;
+  line-height: 1.8;
+  color: var(--secondary);
+  margin-top: 7px;
+}
+.deepseek-heading .text-button {
+  font-size: 9px;
+  flex-shrink: 0;
+}
+.key-input-wrap {
+  position: relative;
+  margin-top: 8px;
+}
+.key-input-wrap input {
+  margin-top: 0;
+  padding-right: 43px;
+}
+:root .deepseek-section .key-input-wrap > .icon-button {
+  position: absolute;
+  right: 5px;
+  top: 5px;
+}
+.deepseek-connect-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 7px;
+  margin: 17px 0 5px;
+}
+.deepseek-connect-actions .button {
+  font-size: 10px;
+  min-height: 33px;
+  padding: 8px 13px;
+}
+.deepseek-preferences {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+}
+.deepseek-model {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 17px;
+  font-size: 10px;
+  padding: 0 0 18px;
+}
+.deepseek-model > span {
+  color: var(--secondary);
+}
+.deepseek-model select {
+  min-width: 150px;
+  max-width: 220px;
+  padding: 8px 10px;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  font-size: 10px;
+}
+.deepseek-existing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 15px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  background: rgb(var(--accent-rgb) / 0.04);
+  border-radius: 10px;
+}
+.deepseek-existing strong {
+  font-size: 10px;
+  font-weight: 500;
+}
+.deepseek-existing p {
+  font-size: 9px;
+  color: var(--secondary);
+  margin-top: 5px;
+}
+.deepseek-existing .button {
+  font-size: 9px;
+  min-height: 31px;
+  padding: 8px 11px;
+  gap: 6px;
+}
+.deepseek-privacy {
+  font-size: 9px;
+  color: var(--secondary);
+  line-height: 1.9;
+  padding: 12px 1px 0;
+}
+.metadata-status-panel {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 15px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 14px;
+  margin-bottom: 23px;
+  background: rgb(var(--accent-rgb) / 0.035);
+}
+.metadata-status-panel > div {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 200px;
+}
+.metadata-status-icon {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 10px;
+  background: var(--soft-mint);
+  color: var(--green);
+  flex-shrink: 0;
+}
+.metadata-status-panel strong {
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+.metadata-status-panel p {
+  font-size: 9px;
+  color: var(--secondary);
+  line-height: 1.8;
+  margin-top: 4px;
+}
+.metadata-status-panel .button {
+  font-size: 9px;
+  min-height: 32px;
+  padding: 8px 12px;
+  gap: 6px;
+}
+.metadata-source-link {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  margin-top: -4px;
+  font-size: 8px;
+  color: var(--secondary);
+}
+.metadata-status-panel.error {
+  border-color: #b8997466;
+}
+.metadata-status-panel.loading,
+.metadata-status-panel.queued {
+  border-color: rgb(var(--accent-rgb) / 0.3);
+}
+.card-status.is-enriching {
+  color: var(--green);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+.card-status.is-enriching > svg {
+  width: 9px;
+  height: 9px;
+}
+@media (max-width: 680px) {
+  .deepseek-heading {
+    gap: 10px;
+  }
+  .deepseek-heading strong {
+    font-size: 14px;
+  }
+  .deepseek-heading strong > span {
+    font-size: 8px;
+  }
+  .deepseek-heading p {
+    font-size: 8px;
+  }
+  .deepseek-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 11px;
+  }
+  .deepseek-heading .text-button {
+    font-size: 8px;
+  }
+  .deepseek-existing {
+    padding: 12px;
+  }
+  .deepseek-existing strong {
+    font-size: 9px;
+  }
+  .deepseek-existing p {
+    font-size: 8px;
+  }
+  .deepseek-existing .button {
+    padding: 8px;
+    font-size: 8px;
+  }
+  .deepseek-privacy {
+    font-size: 8px;
+  }
+  .metadata-status-panel {
+    padding: 12px;
+    gap: 12px;
+  }
+  .metadata-status-panel strong {
+    font-size: 10px;
+  }
+  .metadata-status-panel p {
+    font-size: 8px;
+  }
+  .metadata-status-panel > div {
+    min-width: 160px;
+  }
+  .metadata-status-panel .button {
+    margin-left: auto;
+    font-size: 8px;
+  }
+}
