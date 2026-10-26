@@ -9,6 +9,7 @@ declare global {
       close: () => Promise<void>
       isMaximized: () => Promise<boolean>
       onMaximizeChange: (callback: (value: boolean) => void) => void
+      openWeb: (url: string) => Promise<boolean>
       hide: () => Promise<void>
       quit: () => Promise<void>
       setCloseBehavior: (prefs: { ask: boolean; action: 'tray' | 'exit' }) => void

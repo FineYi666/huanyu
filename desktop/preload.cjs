@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('yingyuDesktop', {
   hide: () => ipcRenderer.invoke('window:hide'),
   quit: () => ipcRenderer.invoke('app:quit'),
   isMaximized: () => ipcRenderer.invoke('window:isMaximized'),
+  openWeb: (url) => ipcRenderer.invoke('window:open-web', url),
   onMaximizeChange: (callback) => {
     ipcRenderer.on('window:maximized', (_event, value) => callback(value))
   },

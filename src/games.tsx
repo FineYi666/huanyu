@@ -115,6 +115,9 @@ export function GameResourceSearch({ notify }: { notify: (message: string) => vo
       setTimeout(() => setCopied(''), 1500)
       if (url.startsWith('magnet:')) {
         notify('磁力链接已复制，可在下载工具中新建任务')
+      } else if (window.yingyuDesktop?.openWeb) {
+        await window.yingyuDesktop.openWeb(url)
+        notify('已打开资源页面，登录网盘后转存即可下载')
       } else {
         window.open(url, '_blank')
         notify('链接已复制并打开网盘页面，转存到你的网盘后即可下载')

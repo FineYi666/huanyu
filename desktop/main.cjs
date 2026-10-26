@@ -114,6 +114,19 @@ else {
         quitting = true
         app.quit()
       })
+      // 资源转存窗口：应用内打开网盘页面，比 shell.openExternal 稳定。
+      ipcMain.handle('window:open-web', (_event, url) => {
+        if (!/^https?:\/\//.test(String(url || ''))) return false
+        const webWindow = new BrowserWindow({
+          width: 1280,
+          height: 880,
+          title: '幻屿 · 资源转存',
+          autoHideMenuBar: true,
+          webPreferences: { sandbox: true, contextIsolation: true },
+        })
+        webWindow.loadURL(String(url))
+        return true
+      })
       ipcMain.on('close-behavior:set', (_event, prefs) => {
         closePrefs.ask = prefs?.ask !== false
         closePrefs.action = prefs?.action === 'exit' ? 'exit' : 'tray'
