@@ -2,7 +2,7 @@ import http from 'node:http'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import fs from 'node:fs'
-import { readFile, writeFile, mkdir, rename, stat } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, rename, stat, unlink } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { Readable } from 'node:stream'
 import { randomUUID } from 'node:crypto'
@@ -423,6 +423,27 @@ const server = http.createServer(async (req, res) => {
       return json(res, posters.catalog(recommendations.get()))
     if (route === '/api/seasonal' && req.method === 'GET')
       return json(res, posters.catalog(recommendations.get()))
+    if (route === '/api/skin-background' && req.method === 'POST') {
+      const input = await body(req, 12 * 1024 * 1024)
+      const image =
+        /^data:image\/(jpeg|png|webp);base64,([a-zA-Z0-9+/=]+)$/.exec(
+          input?.image || '',
+        )
+      if (!image)
+        return json(res, { error: '请上传 JPG、PNG 或 WebP 图片' }, 400)
+      const bytes = Buffer.from(image[2], 'base64')
+      if (bytes.length > 8 * 1024 * 1024)
+        return json(res, { error: '背景图片过大，请压缩后重试' }, 413)
+      const extension = image[1] === 'jpeg' ? 'jpg' : image[1]
+      await writeFile(
+        path.join(DATA, `skin-background.${extension}`),
+        bytes,
+      )
+      for (const stale of ['skin-background.jpg', 'skin-background.png', 'skin-background.webp'])
+        if (stale !== `skin-background.${extension}`)
+          await unlink(path.join(DATA, stale)).catch(() => {})
+      return json(res, { ok: true, url: `/skin-background?v=${Date.now()}` })
+    }
     if (route === '/api/seasonal/seasons' && req.method === 'GET')
       return json(res, { seasons: recommendations.seasons() })
     if (route === '/api/seasonal/search' && req.method === 'GET') {
@@ -692,6 +713,13 @@ const server = http.createServer(async (req, res) => {
       for (const key of ['showSamples', 'autoNext', 'glass', 'ambientMotion', 'deepseekAuto', 'subtitlesEnabled', 'closeAsk'])
         if (typeof input[key] === 'boolean') state.settings[key] = input[key]
       if (['tray', 'exit'].includes(input.closeAction)) state.settings.closeAction = input.closeAction
+      if (
+        typeof input.customAccent === 'string' &&
+        /^#[0-9a-fA-F]{6}$/.test(input.customAccent)
+      )
+        state.settings.customAccent = input.customAccent
+      if (typeof input.customDark === 'boolean')
+        state.settings.customDark = input.customDark
       if (['light', 'dark'].includes(input.theme))
         state.settings.theme = input.theme
       if (SKIN_IDS.includes(input.skin)) state.settings.skin = input.skin
@@ -1147,6 +1175,31 @@ const server = http.createServer(async (req, res) => {
       return json(res, { error: '接口不存在' }, 404)
     if (!['GET', 'HEAD'].includes(req.method))
       return json(res, { error: '不支持的请求方法' }, 405)
+    if (route === '/skin-background' && ['GET', 'HEAD'].includes(req.method)) {
+      for (const extension of ['jpg', 'png', 'webp']) {
+        const file = path.join(DATA, `skin-background.${extension}`)
+        try {
+          const info = await stat(file)
+          if (!info.isFile()) continue
+          res.writeHead(200, {
+            'Content-Type':
+              extension === 'jpg'
+                ? 'image/jpeg'
+                : extension === 'png'
+                  ? 'image/png'
+                  : 'image/webp',
+            'Cache-Control': 'no-cache',
+            'X-Content-Type-Options': 'nosniff',
+          })
+          if (req.method === 'HEAD') return res.end()
+          const stream = fs.createReadStream(file)
+          stream.on('error', () => res.destroy())
+          res.on('close', () => stream.destroy())
+          return stream.pipe(res)
+        } catch {}
+      }
+      return json(res, { error: '尚未导入皮肤背景图' }, 404)
+    }
     if (route.startsWith('/covers/')) {
       if (
         !/^\/covers\/(?:[a-f0-9]{24}|seasonal-\d{1,12})\.(jpg|png|webp)$/.test(

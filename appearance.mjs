@@ -6,6 +6,7 @@ export const SKIN_IDS = [
   'synth',
   'gilded',
   'glacier',
+  'custom',
 ]
 import { normalizeSubtitleStyle } from './subtitle-style.mjs'
 
@@ -25,6 +26,13 @@ export function normalizeSettings(input = {}) {
       typeof input.deepseekAuto === 'boolean' ? input.deepseekAuto : true,
     closeAsk: typeof input.closeAsk === 'boolean' ? input.closeAsk : true,
     closeAction: input.closeAction === 'exit' ? 'exit' : 'tray',
+    customAccent:
+      typeof input.customAccent === 'string' &&
+      /^#[0-9a-fA-F]{6}$/.test(input.customAccent)
+        ? input.customAccent
+        : '#7aa2f7',
+    customDark:
+      typeof input.customDark === 'boolean' ? input.customDark : true,
     deepseekModel:
       typeof input.deepseekModel === 'string' &&
       /^[\w.:-]{1,100}$/.test(input.deepseekModel)

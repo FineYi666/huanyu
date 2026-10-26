@@ -54,6 +54,15 @@ export const skins = [
     colors: ['#d9b45c', '#8a6d34', '#0c0a07'],
   },
   {
+    id: 'custom',
+    defaultTheme: 'dark',
+    name: '自定义幻境',
+    english: 'MY CANVAS',
+    description: '导入图片 · 专属背景 · 个性取色',
+    detail: '用你喜欢的画面，布置自己的放映室。',
+    colors: ['#8ab4f8', '#c9a45c', '#10141c'],
+  },
+  {
     id: 'glacier',
     defaultTheme: 'light',
     name: '冰雪之境',

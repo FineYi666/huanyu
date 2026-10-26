@@ -1,4 +1,4 @@
-import { useRef, type KeyboardEvent } from 'react'
+import { useRef, useState, type ChangeEvent, type KeyboardEvent } from 'react'
 import {
   Check,
   CheckCheck,
@@ -7,12 +7,85 @@ import {
   Sun,
   WandSparkles,
 } from 'lucide-react'
+import { api } from './api'
 import { skins, getSkin } from './skins'
 import type { AppSettings } from './types'
 
 export type AppearancePatch = Partial<
-  Pick<AppSettings, 'skin' | 'theme' | 'glass' | 'ambientMotion'>
+  Pick<
+    AppSettings,
+    | 'skin'
+    | 'theme'
+    | 'glass'
+    | 'ambientMotion'
+    | 'customAccent'
+    | 'customDark'
+  >
 >
+
+// 从导入的图片中提取强调色与明暗基调（高饱和像素加权均值并提亮）。
+function extractPalette(img: HTMLImageElement): {
+  accent: string
+  dark: boolean
+} {
+  const canvas = document.createElement('canvas')
+  canvas.width = 48
+  canvas.height = 48
+  const context = canvas.getContext('2d')
+  if (!context) return { accent: '#7aa2f7', dark: true }
+  context.drawImage(img, 0, 0, 48, 48)
+  const { data } = context.getImageData(0, 0, 48, 48)
+  let sumR = 0
+  let sumG = 0
+  let sumB = 0
+  let samples = 0
+  let accR = 0
+  let accG = 0
+  let accB = 0
+  let accWeight = 0
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i]
+    const g = data[i + 1]
+    const b = data[i + 2]
+    const max = Math.max(r, g, b)
+    const min = Math.min(r, g, b)
+    const lightness = (max + min) / 510
+    if (lightness < 0.1 || lightness > 0.92) continue
+    sumR += r
+    sumG += g
+    sumB += b
+    samples++
+    const saturation = max === 0 ? 0 : (max - min) / max
+    if (saturation > 0.18) {
+      accR += r * saturation
+      accG += g * saturation
+      accB += b * saturation
+      accWeight += saturation
+    }
+  }
+  const toHex = (values: number[]) =>
+    '#' +
+    values
+      .map((v) =>
+        Math.round(Math.min(255, Math.max(0, v)))
+          .toString(16)
+          .padStart(2, '0'),
+      )
+      .join('')
+  let accent = '#7aa2f7'
+  if (accWeight > 0) {
+    const r = accR / accWeight
+    const g = accG / accWeight
+    const b = accB / accWeight
+    const peak = Math.max(r, g, b)
+    const boost = peak > 0 && peak < 205 ? 205 / peak : 1
+    accent = toHex([r * boost, g * boost, b * boost])
+  }
+  const avgLightness = samples
+    ? (sumR + sumG + sumB) / (3 * samples * 255)
+    : 0.3
+  return { accent, dark: avgLightness < 0.55 }
+}
 
 export default function AppearancePicker({
   settings,
@@ -26,6 +99,49 @@ export default function AppearancePicker({
   busy: boolean
 }) {
   const choices = useRef<Array<HTMLButtonElement | null>>([])
+  const [customBusy, setCustomBusy] = useState(false)
+  const [customError, setCustomError] = useState('')
+  async function importCustomBackground(event: ChangeEvent<HTMLInputElement>) {
+    const image = event.target.files?.[0]
+    if (!image || customBusy) return
+    setCustomBusy(true)
+    setCustomError('')
+    try {
+      if (!/image\/(jpeg|png|webp)/.test(image.type))
+        throw new Error('请选择 JPG、PNG 或 WebP 图片')
+      if (image.size > 20 * 1024 * 1024)
+        throw new Error('图片请控制在 20 MB 以内')
+      const objectUrl = URL.createObjectURL(image)
+      const img = new Image()
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve()
+        img.onerror = () => reject(new Error('图片无法读取'))
+        img.src = objectUrl
+      })
+      const palette = extractPalette(img)
+      const scale = Math.min(1, 2560 / Math.max(img.width, 1))
+      const canvas = document.createElement('canvas')
+      canvas.width = Math.max(1, Math.round(img.width * scale))
+      canvas.height = Math.max(1, Math.round(img.height * scale))
+      const context = canvas.getContext('2d')
+      if (!context) throw new Error('当前环境不支持图片处理')
+      context.drawImage(img, 0, 0, canvas.width, canvas.height)
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
+      URL.revokeObjectURL(objectUrl)
+      await api<{ url: string }>('/skin-background', { image: dataUrl })
+      onChange({
+        skin: 'custom',
+        theme: palette.dark ? 'dark' : 'light',
+        customAccent: palette.accent,
+        customDark: palette.dark,
+      })
+    } catch (error) {
+      setCustomError((error as Error).message)
+    } finally {
+      setCustomBusy(false)
+      event.target.value = ''
+    }
+  }
   function navigate(event: KeyboardEvent, index: number) {
     const direction = {
       ArrowRight: 1,
@@ -105,10 +221,14 @@ export default function AppearancePicker({
                         : skin.id === 'grove' ? '/artwork/skins/grove-pearl-dunes.jpg'
                         : skin.id === 'lunar' ? '/artwork/skins/lunar-jade-ink.jpg'
                         : skin.id === 'aurora' ? '/artwork/skins/aurora-bluegold-nebula.jpg'
-                        : '/artwork/hero-howls.jpg'
+                        : skin.id === 'custom' ? '/skin-background'
+                    : '/artwork/hero-howls.jpg'
                     }
                     alt=""
                     loading="lazy"
+                    onError={(event) => {
+                      event.currentTarget.style.opacity = '0'
+                    }}
                   />
                   <div>
                     <i />
@@ -162,6 +282,26 @@ export default function AppearancePicker({
             <p className="skin-description">{skin.description}</p>
           </button>
         ))}
+      </div>
+      <div className="custom-skin-import">
+        <div>
+          <strong>自定义幻境 · 导入专属背景</strong>
+          <p>
+            选择一张你喜欢的图片（JPG / PNG / WebP，自动压缩与取色），
+            即可生成与内置皮肤同等效果的专属主题。
+          </p>
+          {customError && <p className="custom-skin-error">{customError}</p>}
+        </div>
+        <label className="button primary custom-import-button">
+          <input
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            hidden
+            onChange={importCustomBackground}
+            disabled={customBusy || busy}
+          />
+          {customBusy ? '正在生成…' : '导入背景图'}
+        </label>
       </div>
       <div className="appearance-options">
         <div className="appearance-option">

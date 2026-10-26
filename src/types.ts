@@ -95,6 +95,8 @@ export interface AppSettings {
   deepseekStorageError: string
   closeAsk: boolean
   closeAction: 'tray' | 'exit'
+  customAccent: string
+  customDark: boolean
 }
 export interface AppState {
   media: Media[]

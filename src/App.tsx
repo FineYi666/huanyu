@@ -1582,6 +1582,27 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
+  // 自定义皮肤：把取色得到的强调色注入 CSS 变量。
+  useEffect(() => {
+    const rootElement = document.documentElement
+    if (
+      state?.settings.skin === 'custom' &&
+      /^#[0-9a-fA-F]{6}$/.test(state?.settings.customAccent || '')
+    ) {
+      rootElement.style.setProperty(
+        '--custom-accent',
+        state.settings.customAccent,
+      )
+      const numeric = parseInt(state.settings.customAccent.slice(1), 16)
+      rootElement.style.setProperty(
+        '--custom-accent-rgb',
+        `${(numeric >> 16) & 255} ${(numeric >> 8) & 255} ${numeric & 255}`,
+      )
+    } else {
+      rootElement.style.removeProperty('--custom-accent')
+      rootElement.style.removeProperty('--custom-accent-rgb')
+    }
+  }, [state?.settings.skin, state?.settings.customAccent])
   // 关闭行为偏好与设置变更时同步到主进程。
   useEffect(() => {
     const desktop = window.yingyuDesktop
@@ -1800,6 +1821,12 @@ export default function App() {
     <div className="app-shell">
       {state?.settings.skin === 'lunar' && <LunarAtmosphere />}
       {state?.settings.skin === 'aurora' && <AuroraAtmosphere />}
+      {state?.settings.skin === 'custom' && (
+        <div className="custom-atmosphere scene-atmosphere" aria-hidden="true">
+          <div className="scene-landscape" />
+          <div className="scene-tint" />
+        </div>
+      )}
       {state?.settings.skin === 'synth' && <SynthAtmosphere />}
       {state?.settings.skin === 'gilded' && <GildedAtmosphere />}
       {state?.settings.skin === 'ember' && <EmberAtmosphere />}

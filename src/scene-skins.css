@@ -149,6 +149,44 @@ html[data-skin='aurora'][data-theme='light'] {
   --glass-edge-rgb: 255 255 255;
   --panel-rgb: 242 247 253;
 }
+/* 自定义幻境：用户导入图片 + 自动取色。 */
+html[data-skin='custom'] {
+  --scene-image: url('/skin-background');
+  --bg: #10141c;
+  --surface: #171d29;
+  --subtle: #1e2634;
+  --text: #e8edf6;
+  --secondary: #94a3b8;
+  --muted: #6b7a90;
+  --border: #2a3547;
+  --green: var(--custom-accent, #7aa2f7);
+  --mint: #24314a;
+  --soft-mint: #1c2839;
+  --sidebar: #131926;
+  --accent-rgb: var(--custom-accent-rgb, 122 162 247);
+  --glass-rgb: 24 32 48;
+  --glass-edge-rgb: 160 190 240;
+  --panel-rgb: 17 22 34;
+  --texture: none;
+  --ambient: none;
+}
+html[data-skin='custom'][data-theme='light'] {
+  --bg: #f2f4f8;
+  --surface: #fbfcfe;
+  --subtle: #e9edf4;
+  --text: #232a36;
+  --secondary: #6b7688;
+  --muted: #8b94a5;
+  --border: #d8dfeb;
+  --green: var(--custom-accent, #4a72c4);
+  --mint: #dfe6f0;
+  --soft-mint: #e8edf5;
+  --sidebar: #eaeef5;
+  --accent-rgb: var(--custom-accent-rgb, 74 114 196);
+  --glass-rgb: 242 244 248;
+  --glass-edge-rgb: 255 255 255;
+  --panel-rgb: 244 246 250;
+}
 /* 晨雾青屿深色：暖深灰白感（非绿），与珍珠浅色呼应。 */
 html[data-skin='grove'][data-theme='dark'] {
   --bg: #26231d;
@@ -196,9 +234,15 @@ html[data-skin='lunar'][data-theme='light'] .scene-tint { background: linear-gra
     linear-gradient(0deg,#060d1a4a,#0a142816 55%,#050b1846);
 }
 html[data-skin='aurora'][data-theme='light'] .scene-tint { background: linear-gradient(0deg,#eef4fc42,#e4edf916); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell::before,
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell::after { display: none; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .main-shell {
+.custom-atmosphere .scene-tint {
+  background:
+    radial-gradient(ellipse at 50% 38%, transparent 46%, #05080f4d 100%),
+    linear-gradient(0deg,#0a0e1638,#0d111818 55%,#080c1440);
+}
+html[data-skin='custom'][data-theme='light'] .scene-tint { background: linear-gradient(0deg,#f4f6f93d,#eef1f61c); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell::before,
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell::after { display: none; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .main-shell {
   background: rgb(var(--panel-rgb) / .69);
   backdrop-filter: blur(5px) saturate(110%);
   border-color: rgb(var(--glass-edge-rgb) / .42);
@@ -207,9 +251,9 @@ html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-ski
 html[data-skin='synth'] .app-shell .main-shell { border-radius: 0; }
 html[data-skin='glacier'] .app-shell .main-shell { border-radius: 0; background: rgb(var(--panel-rgb) / .72); }
 html[data-skin='gilded'] .app-shell .main-shell { border-radius: 0; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'])[data-theme='light'] .app-shell .main-shell { background: rgb(var(--panel-rgb) / .87); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .topbar { background: rgb(var(--panel-rgb) / .42); border-bottom-color: rgb(var(--glass-edge-rgb) / .22); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .watch-shelf { background: rgb(var(--glass-rgb) / .6); backdrop-filter: blur(13px); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom'])[data-theme='light'] .app-shell .main-shell { background: rgb(var(--panel-rgb) / .87); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .topbar { background: rgb(var(--panel-rgb) / .42); border-bottom-color: rgb(var(--glass-edge-rgb) / .22); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .watch-shelf { background: rgb(var(--glass-rgb) / .6); backdrop-filter: blur(13px); }
 html[data-skin='synth'] .app-shell .watch-shelf { border-color: #f86ac64d; border-radius: 15px; box-shadow: inset 0 1px #ffb5e22e; }
 html[data-skin='glacier'] .app-shell .watch-shelf { border-color: rgb(var(--glass-edge-rgb) / .55); box-shadow: inset 0 1px #ffffff80,inset 0 -1px #a4dfff24; }
 html[data-skin='gilded'] .app-shell .watch-shelf { border-color: rgb(var(--accent-rgb) / .35); background: rgb(var(--glass-rgb) / .6); backdrop-filter: blur(13px); box-shadow: inset 0 1px #f4d78e2e; }
@@ -224,11 +268,11 @@ html[data-skin='synth'] .app-shell .main-nav .nav-item.active { border-color: #f
 html[data-skin='synth'][data-theme='light'] .app-shell .main-nav .nav-item.active { color: #8c1b64; background: #e65aa927; }
 html[data-skin='glacier'] .app-shell .main-nav .nav-item { border-radius: 10px; }
 html[data-skin='glacier'] .app-shell .main-nav .nav-item.active { box-shadow: inset 0 -2px var(--green),inset 0 1px #ffffff50,0 3px 14px #91d7ff1a; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel { border-width: 1px; min-height: 430px; isolation: isolate; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel { border-width: 1px; min-height: 430px; isolation: isolate; }
 html[data-skin='synth'] .app-shell .new-season-page .hero.carousel { border-color: #ff64c78c; border-radius: 16px; box-shadow: 0 0 0 1px #ff53c01c,0 0 35px #f328ac20,0 22px 45px #08031966; }
 html[data-skin='glacier'] .app-shell .new-season-page .hero.carousel { border-color: #d1edffaa; border-radius: 23px; box-shadow: inset 0 1px #ffffffa6,0 22px 45px #102e4d40; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero.carousel .hero-visual { background: var(--scene-image) center / cover no-repeat; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero.carousel .hero-image { display: none; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero.carousel .hero-visual { background: var(--scene-image) center / cover no-repeat; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero.carousel .hero-image { display: none; }
 html[data-skin='synth'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#160820ed 0%,#18092ab5 35%,#15082714 70%),linear-gradient(0deg,#11071dd4,transparent 40%); }
 html[data-skin='glacier'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#0b263ddb 0%,#14334d9c 36%,#17344b0a 72%),linear-gradient(0deg,#102b48b8,transparent 35%); }
 html[data-skin='gilded'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#150e07e6 0%,#1e1509b0 36%,#1a110614 72%),linear-gradient(0deg,#140d07d4,transparent 40%); }
@@ -239,25 +283,25 @@ html[data-skin='lunar'] .hero.carousel .seasonal-slide .hero-shade { background:
 html[data-skin='lunar'][data-theme='light'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#0d2417cc 0%,#12322299 36%,#14301e0d 72%),linear-gradient(0deg,#0f2417c4,transparent 40%); }
 html[data-skin='aurora'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#060f1de8 0%,#0c1a30b2 36%,#0a142614 72%),linear-gradient(0deg,#050d1ad4,transparent 40%); }
 html[data-skin='aurora'][data-theme='light'] .hero.carousel .seasonal-slide .hero-shade { background: linear-gradient(90deg,#12253ccc 0%,#1a335299 36%,#16294a0d 72%),linear-gradient(0deg,#10203cc4,transparent 40%); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero.carousel::after { display: none; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 53%; top: 41px; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero.carousel::after { display: none; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 53%; top: 41px; }
 html[data-skin='synth'] .app-shell .new-season-page .hero.carousel .hero-copy h2 { text-shadow: 0 3px 15px #20042f80; }
 html[data-skin='glacier'] .app-shell .new-season-page .hero.carousel .hero-copy h2 { font-family: 'Georgia','STZhongsong','SimSun',serif; letter-spacing: .4px; font-weight: 600; text-shadow: 0 2px 15px #0c254980; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel .hero-copy p { color: #e5efffee; text-shadow: 0 1px 5px #07152980; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel .hero-copy p { color: #e5efffee; text-shadow: 0 1px 5px #07152980; }
 html[data-skin='gilded'] .app-shell .new-season-page .hero.carousel .hero-copy p { color: #f7efdef2; text-shadow: 0 1px 5px #140d0580; }
 html[data-skin='ember'] .app-shell .new-season-page .hero.carousel .hero-copy p { color: #fbeae8f2; text-shadow: 0 1px 5px #17060680; }
 html[data-skin='grove'] .app-shell .new-season-page .hero.carousel .hero-copy p { color: #f6f3eaf2; text-shadow: 0 1px 5px #1e181080; }
 html[data-skin='lunar'] .app-shell .new-season-page .hero.carousel .hero-copy p { color: #e9f6edf2; text-shadow: 0 1px 5px #04120a80; }
 html[data-skin='aurora'] .app-shell .new-season-page .hero.carousel .hero-copy p { color: #e8f1fdf2; text-shadow: 0 1px 5px #050d1a80; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero-poster-stage { width: 208px; right: 4.8%; top: 52px; bottom: 79px; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero-feature-poster { border: 1px solid #f0f6ff99; background: #112039; box-shadow: 0 16px 45px #060b2859; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero-poster-stage { width: 208px; right: 4.8%; top: 52px; bottom: 79px; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero-feature-poster { border: 1px solid #f0f6ff99; background: #112039; box-shadow: 0 16px 45px #060b2859; }
 html[data-skin='gilded'] .hero-feature-poster { border-color: #f2d28c99; background: #1c1408; box-shadow: 0 0 20px #d9a83f30,0 18px 40px #0d080390; }
 html[data-skin='ember'] .hero-feature-poster { border-color: #ff8d8499; background: #230d0f; box-shadow: 0 0 20px #ff5a5230,0 18px 40px #12040490; }
 html[data-skin='grove'] .hero-feature-poster { border-color: #f0e6cd99; background: #241f14; box-shadow: 0 0 20px #c09a5230,0 18px 40px #120f0690; }
 html[data-skin='lunar'] .hero-feature-poster { border-color: #8fe6b499; background: #0f2216; box-shadow: 0 0 20px #4dd88a30,0 18px 40px #04100890; }
 html[data-skin='aurora'] .hero-feature-poster { border-color: #9ed2ff99; background: #0d1a30; box-shadow: 0 0 20px #52b5ff30,0 18px 40px #040b1a90; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero-poster-reflection { display: none; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .hero-poster-caption { color: #f1f8ffb3; text-shadow: 0 1px 5px #091326; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero-poster-reflection { display: none; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .hero-poster-caption { color: #f1f8ffb3; text-shadow: 0 1px 5px #091326; }
 html[data-skin='gilded'] .hero-poster-caption { color: #f7efdeb3; text-shadow: 0 1px 5px #140d05; }
 html[data-skin='ember'] .hero-poster-caption { color: #fbeae8b3; text-shadow: 0 1px 5px #170606; }
 html[data-skin='grove'] .hero-poster-caption { color: #f6f3eab3; text-shadow: 0 1px 5px #1e1810; }
@@ -277,7 +321,7 @@ html[data-skin='lunar'] .hero .carousel-control { border-color: #8fe6b466; color
 html[data-skin='lunar'] .hero .carousel-pagination > button.active > span { background: #4dd88a; box-shadow: 0 0 9px #2eb86c; }
 html[data-skin='aurora'] .hero .carousel-control { border-color: #9ed2ff66; color: #e8f1fd; background: #122a4a62; }
 html[data-skin='aurora'] .hero .carousel-pagination > button.active > span { background: #52b5ff; box-shadow: 0 0 9px #2a8fe0; }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .hero-credit { color: #ecf3ffb8; text-shadow: 0 1px 6px #071322; }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .hero-credit { color: #ecf3ffb8; text-shadow: 0 1px 6px #071322; }
 html[data-skin='gilded'] .app-shell .hero-credit { color: #f7efdeb8; text-shadow: 0 1px 6px #140d05; }
 html[data-skin='synth'][data-glass='true'] :is(.button.primary,.hero-button) { background: linear-gradient(130deg,#ff8cd5,#ea25ae); color: #330620; border-color: #ffb4e6b3; box-shadow: inset 0 1px #ffe7f380,0 0 20px #ec2cb640; }
 html[data-skin='glacier'][data-glass='true'] :is(.button.primary,.hero-button) { background: linear-gradient(145deg,#edfbff,#91d6fa); color: #153d58; border-color: #effbffb3; box-shadow: inset 0 1px #fff,0 0 18px #8bcfff30; }
@@ -293,9 +337,9 @@ html[data-skin='ember'] .app-shell .season-find { border-color: rgb(var(--accent
 html[data-skin='grove'] .app-shell .season-find { border-color: rgb(var(--accent-rgb) / .4); background: rgb(var(--glass-rgb) / .7); }
 html[data-skin='lunar'] .app-shell .season-find { border-color: rgb(var(--accent-rgb) / .4); background: rgb(var(--glass-rgb) / .7); }
 html[data-skin='aurora'] .app-shell .season-find { border-color: rgb(var(--accent-rgb) / .4); background: rgb(var(--glass-rgb) / .7); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .season-import-actions button { color: var(--text); background: rgb(var(--glass-rgb) / .64); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .season-card h3 { text-shadow: 0 1px 8px rgb(var(--panel-rgb) / .4); }
-html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) :is(.dialog,.import-menu) { background: rgb(var(--panel-rgb) / .96); backdrop-filter: blur(28px); border: 1px solid rgb(var(--glass-edge-rgb) / .5); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .season-import-actions button { color: var(--text); background: rgb(var(--glass-rgb) / .64); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .season-card h3 { text-shadow: 0 1px 8px rgb(var(--panel-rgb) / .4); }
+html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) :is(.dialog,.import-menu) { background: rgb(var(--panel-rgb) / .96); backdrop-filter: blur(28px); border: 1px solid rgb(var(--glass-edge-rgb) / .5); }
 html[data-skin='synth'] .player-dialog { box-shadow: 0 0 0 1px #ff50c03d,0 30px 120px #040212cc; }
 html[data-skin='glacier'] .player-dialog { box-shadow: inset 0 1px #eafaff99,0 30px 120px #06182ab3; }
 html[data-skin='gilded'] .player-dialog { box-shadow: 0 0 0 1px #d9a53c33,0 30px 120px #0d0803cc; }
@@ -315,6 +359,7 @@ html[data-skin='aurora'] .player-dialog { box-shadow: 0 0 0 1px #2a8fe033,0 30px
 .skin-preview[data-preview-skin='grove'] { background: linear-gradient(#f7f5efc2,#f7f5efb3),url('/artwork/skins/grove-pearl-dunes.jpg') center / cover; }
 .skin-preview[data-preview-skin='lunar'] { background: linear-gradient(#0b1a10aa,#0b1a10bb),url('/artwork/skins/lunar-jade-ink.jpg') center / cover; }
 .skin-preview[data-preview-skin='aurora'] { background: linear-gradient(#0a1428aa,#0a1428bb),url('/artwork/skins/aurora-bluegold-nebula.jpg') center / cover; }
+.skin-preview[data-preview-skin='custom'] { background: linear-gradient(#10141caa,#10141cbb),url('/skin-background') center / cover; }
 /* Constant, slow ambient motion only; UI labels and controls remain stationary. */
 .scene-weather { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: paint; }
 .scene-weather-synth { opacity: .7; }
@@ -346,7 +391,7 @@ html[data-ambient-motion='false'] :is(.scene-weather,.synth-atmosphere,.glacier-
   :is(.synth-atmosphere,.glacier-atmosphere,.gilded-atmosphere,.cyber-atmosphere) * { animation: none !important; }
 }
 @media (prefers-reduced-transparency: reduce) {
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .main-shell { background: var(--surface); backdrop-filter: none; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .main-shell { background: var(--surface); backdrop-filter: none; }
 }
 @media (forced-colors: active) { .scene-atmosphere,.scene-weather { display: none; } }
 @media (hover: hover) and (pointer: fine) {
@@ -354,16 +399,16 @@ html[data-ambient-motion='false'] :is(.scene-weather,.synth-atmosphere,.glacier-
   html[data-skin='glacier'] .season-poster:hover { outline: 1px solid #d8f2ff; box-shadow: 0 0 22px #b2e5ff33; }
 }
 @media (max-width: 1100px) {
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero-poster-stage { width: 158px; right: 5%; top: 78px; bottom: 96px; }
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 56%; top: 32px; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero-poster-stage { width: 158px; right: 5%; top: 78px; bottom: 96px; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 56%; top: 32px; }
 }
 @media (max-width: 800px) {
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel { min-height: 365px; }
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel .hero-copy { top: 28px; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel { min-height: 365px; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel .hero-copy { top: 28px; }
   .scene-atmosphere .snowfall-track:nth-of-type(n+20) { display: none; }
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero-poster-stage { width: 138px; top: 70px; bottom: 85px; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero-poster-stage { width: 138px; top: 70px; bottom: 85px; }
 }
 @media (max-width: 480px) {
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 76%; }
-  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora']) .app-shell .new-season-page .hero-poster-stage { opacity: .5; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero.carousel .hero-copy { width: 76%; }
+  html:is([data-skin='synth'],[data-skin='glacier'],[data-skin='gilded'],[data-skin='ember'],[data-skin='grove'],[data-skin='lunar'],[data-skin='aurora'],[data-skin='custom']) .app-shell .new-season-page .hero-poster-stage { opacity: .5; }
 }
