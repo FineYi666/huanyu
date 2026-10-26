@@ -928,6 +928,13 @@ const server = http.createServer(async (req, res) => {
       })
       return json(res, { url: `${origin}/api/stream/${token}`, format: source?.format || 'file' })
     }
+    if (route === '/api/games/resource-search' && req.method === 'GET') {
+      try {
+        return json(res, await resourceSearch.searchGames(url.searchParams.get('q') || ''))
+      } catch (error) {
+        return json(res, { error: error.message || '游戏资源搜索暂时不可用' }, error.status || 502)
+      }
+    }
     if (route === '/api/games/search' && req.method === 'GET') {
       try {
         return json(res, {

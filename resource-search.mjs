@@ -365,5 +365,122 @@ export function createResourceSearch({
       pending.set(key, operation)
       return operation
     },
+    // 游戏资源搜索：通用网盘/磁力链接聚合（复用 PanSou 与 PanSearch）。
+    async searchGames(keyword) {
+      const clean = String(keyword || '').trim().slice(0, 80)
+      if (clean.length < 2) throw new Error('请输入 2 个字以上的游戏名称')
+      const key = 'games:' + clean.toLowerCase()
+      const previous = cache.get(key)
+      if (previous && now() - previous.at < 30 * 60000) return previous.value
+      if (pending.has(key)) return pending.get(key)
+      const operation = (async () => {
+        const rows = []
+        const collectInto = async (provider) => {
+          try {
+            rows.push(...(await provider(clean)))
+          } catch {}
+        }
+        await Promise.allSettled([
+          collectInto(async () => {
+            const sourceUrl = `https://pansou.app/?q=${encodeURIComponent(clean)}`
+            const page = JSON.parse(
+              await request(
+                `https://pansou.app/api/search?kw=${encodeURIComponent(clean)}&res=merged_by_type`,
+              ),
+            )
+            if (page.code !== 0 || !page.data)
+              throw new Error('来源暂时不可用')
+            const merged = page.data.merged_by_type || {}
+            const flattened = []
+            for (const [type, entries] of Object.entries(merged)) {
+              for (const row of entries || [])
+                flattened.push({
+                  title: row.note,
+                  content: `${row.note || ''}
+${row.url || ''}`,
+                  code: row.password || '',
+                  time: row.datetime,
+                  source: `PanSou·${type}`,
+                })
+            }
+            return flattened
+          }),
+          collectInto(async () => {
+            const sourceUrl = `${BASE}/search?keyword=${encodeURIComponent(clean)}`
+            const html = await request(sourceUrl)
+            const match = html.match(
+              /<script[^>]*id="__NEXT_DATA__"[^>]*>([\s\S]*?)<\/script>/,
+            )
+            if (!match) throw new Error('搜索页面结构已更新')
+            const page = JSON.parse(match[1])
+            return [...(page.props?.pageProps?.data?.data || [])].map(
+              (row) => ({
+                title: '',
+                content: `${row.description || row.title || ''}
+${row.url || ''}`,
+                code: row.password || '',
+                time: row.datetime || row.time,
+                source: 'PanSearch',
+              }),
+            )
+          }),
+        ])
+        const linkTypes = [
+          ['夸克网盘', /https?:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+/g],
+          ['百度网盘', /https?:\/\/pan\.baidu\.com\/s\/[a-zA-Z0-9_-]+/g],
+          ['磁力链接', /magnet:\?xt=urn:btih:[a-zA-Z0-9]{32,40}/g],
+          ['123云盘', /https?:\/\/(?:www\.)?123(?:684|912)?pan\.com\/s\/[a-zA-Z0-9_-]+/g],
+          ['阿里云盘', /https?:\/\/(?:www\.)?(?:alipan|aliyundrive)\.com\/s\/[a-zA-Z0-9]+/g],
+          ['天翼云盘', /https?:\/\/cloud\.189\.cn\/t\/[a-zA-Z0-9]+/g],
+          ['移动云盘', /https?:\/\/caiyun\.139\.com\/m\/i\?[a-zA-Z0-9]+/g],
+        ]
+        const results = []
+        const seenLinks = new Set()
+        for (const row of rows) {
+          const content = String(row.content || '')
+          const links = []
+          for (const [type, pattern] of linkTypes) {
+            for (const match of content.matchAll(pattern)) {
+              if (seenLinks.has(match[0])) continue
+              seenLinks.add(match[0])
+              links.push({ type, url: match[0] })
+            }
+          }
+          if (!links.length) continue
+          const beforeLink = content
+            .slice(0, Math.max(0, content.indexOf(links[0].url)))
+            .replace(/<[^>]*$/g, '')
+          const titleMatch = [
+            ...beforeLink.matchAll(
+              /(?:^|\n)(?:名称[:：]\s*|\d+[、.．]\s*)([^\n]+)/g,
+            ),
+          ].at(-1)?.[1]
+          const title = (titleMatch || row.title || clean).trim().slice(0, 100)
+          results.push({
+            id: createHash('sha256')
+              .update(links[0].url)
+              .digest('hex')
+              .slice(0, 20),
+            title,
+            links,
+            code: row.code || '',
+            date: row.time || '',
+            source: row.source || '',
+          })
+        }
+        const value = {
+          query: clean,
+          results: results.slice(0, 30),
+          searchedAt: new Date(now()).toISOString(),
+        }
+        if (value.results.length) {
+          if (cache.size >= 80) cache.delete(cache.keys().next().value)
+          cache.set(key, { at: now(), value })
+        }
+        return value
+      })().finally(() => pending.delete(key))
+      pending.set(key, operation)
+      return operation
+    },
   }
 }

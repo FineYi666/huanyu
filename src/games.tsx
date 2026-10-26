@@ -72,6 +72,16 @@ function GameCover({ game }: { game: Game }) {
   )
 }
 
+type GameResourceLink = { type: string; url: string }
+type GameResource = {
+  id: string
+  title: string
+  links: GameResourceLink[]
+  code: string
+  date: string
+  source: string
+}
+
 export default function GamesPage({
   games,
   launchingId,
@@ -85,6 +95,38 @@ export default function GamesPage({
   onLaunch: (game: Game) => void
   onFavorite: (game: Game) => void
 }) {
+  const [resourceQuery, setResourceQuery] = useState('')
+  const [resourceResults, setResourceResults] = useState<GameResource[] | null>(
+    null,
+  )
+  const [resourceBusy, setResourceBusy] = useState(false)
+  const [resourceError, setResourceError] = useState('')
+  const [copied, setCopied] = useState('')
+  async function searchResources() {
+    const keyword = resourceQuery.trim()
+    if (keyword.length < 2 || resourceBusy) return
+    setResourceBusy(true)
+    setResourceError('')
+    try {
+      const value = await api<{ results: GameResource[] }>(
+        `/games/resource-search?q=${encodeURIComponent(keyword)}`,
+      )
+      setResourceResults(value.results || [])
+    } catch (error) {
+      setResourceError((error as Error).message)
+    } finally {
+      setResourceBusy(false)
+    }
+  }
+  async function copyLink(url: string) {
+    try {
+      await navigator.clipboard.writeText(url)
+      setCopied(url)
+      setTimeout(() => setCopied(''), 1500)
+    } catch {
+      /* 剪贴板不可用时静默 */
+    }
+  }
   return (
     <div className="media-grid games-grid">
       {games.map((game, index) => (
@@ -163,6 +205,75 @@ export default function GamesPage({
           </div>
         </article>
       ))}
+      <div className="game-resource-search">
+        <div className="game-resource-head">
+          <strong>搜索游戏资源</strong>
+          <span>
+            聚合公开网盘与磁力站的游戏资源，复制链接转存网盘后下载导入
+          </span>
+        </div>
+        <div className="game-resource-row">
+          <input
+            value={resourceQuery}
+            onChange={(e) => setResourceQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') void searchResources()
+            }}
+            placeholder="输入游戏名称，如：艾尔登法环"
+            maxLength={80}
+            aria-label="搜索游戏资源"
+          />
+          <button
+            type="button"
+            className="button subtle"
+            disabled={resourceBusy || resourceQuery.trim().length < 2}
+            onClick={() => void searchResources()}
+          >
+            {resourceBusy ? (
+              <LoaderCircle size={15} className="spin" />
+            ) : (
+              <Sparkles size={15} />
+            )}
+            {resourceBusy ? '搜索中' : '搜索资源'}
+          </button>
+        </div>
+        {resourceError && (
+          <p className="game-resource-error">{resourceError}</p>
+        )}
+        {resourceResults && (
+          <div className="game-resource-results">
+            {resourceResults.length ? (
+              resourceResults.map((item) => (
+                <div className="game-resource-item" key={item.id}>
+                  <div className="game-resource-copy">
+                    <h4>{item.title}</h4>
+                    <span>
+                      {item.date ? `${item.date.slice(0, 10)} · ` : ''}
+                      {item.links.map((l) => l.type).join(' / ')}
+                    </span>
+                  </div>
+                  <div className="game-resource-links">
+                    {item.links.map((link) => (
+                      <button
+                        key={link.url}
+                        type="button"
+                        onClick={() => void copyLink(link.url)}
+                        title={link.url}
+                      >
+                        {copied === link.url ? '已复制' : link.type}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <p className="game-resource-error">
+                没有找到相关资源，可以换一个名称或添加空格重试。
+              </p>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   )
 }
