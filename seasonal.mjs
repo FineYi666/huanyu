@@ -434,21 +434,6 @@ export async function createSeasonalService({
     } catch {}
     const request = bangumiRequest(fetcher)
     const start = `${now().getFullYear() - 3}-01-01`
-    const response = await request(
-      'https://api.bgm.tv/v0/search/subjects?limit=40',
-      {
-        method: 'POST',
-        body: JSON.stringify({
-          keyword: query,
-          sort: 'match',
-          filter: {
-            type: [2],
-            air_date: [`>=${start}`],
-            nsfw: false,
-          },
-        }),
-      },
-    )
     let results = []
     try {
       const response = await request(
