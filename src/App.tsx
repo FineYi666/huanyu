@@ -1582,27 +1582,106 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
-  // 自定义皮肤：把取色得到的强调色注入 CSS 变量。
+  // 自定义皮肤：从图片主色派生整套染色变量（背景/面板/边框随图变色）。
   useEffect(() => {
     const rootElement = document.documentElement
-    if (
-      state?.settings.skin === 'custom' &&
-      /^#[0-9a-fA-F]{6}$/.test(state?.settings.customAccent || '')
-    ) {
-      rootElement.style.setProperty(
-        '--custom-accent',
-        state.settings.customAccent,
-      )
-      const numeric = parseInt(state.settings.customAccent.slice(1), 16)
-      rootElement.style.setProperty(
-        '--custom-accent-rgb',
-        `${(numeric >> 16) & 255} ${(numeric >> 8) & 255} ${numeric & 255}`,
-      )
+    const accent = state?.settings.customAccent || ''
+    const base = state?.settings.customBase || ''
+    const valid = (v: string) => /^#[0-9a-fA-F]{6}$/.test(v)
+    if (state?.settings.skin === 'custom' && valid(accent) && valid(base)) {
+      const channels = (hex: string) => {
+        const numeric = parseInt(hex.slice(1), 16)
+        return [
+          (numeric >> 16) & 255,
+          (numeric >> 8) & 255,
+          numeric & 255,
+        ] as const
+      }
+      const clamp255 = (v: number) =>
+        Math.round(Math.min(255, Math.max(0, v)))
+      // 保持色相，把底色亮度缩放到目标水平
+      const shade = (hex: string, target: number) => {
+        const [r, g, b] = channels(hex)
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b
+        const k = lum > 0 ? (target * 255) / lum : 1
+        return [
+          clamp255(r * k),
+          clamp255(g * k),
+          clamp255(b * k),
+        ] as const
+      }
+      const toHex = (values: readonly number[]) =>
+        '#' +
+        values
+          .map(clamp255)
+          .map((n) => n.toString(16).padStart(2, '0'))
+          .join('')
+      const [ar, ag, ab] = channels(accent)
+      const [br, bg, bb] = channels(base)
+      rootElement.style.setProperty('--custom-accent', accent)
+      rootElement.style.setProperty('--custom-accent-rgb', `${ar} ${ag} ${ab}`)
+      if (state?.settings.customDark) {
+        rootElement.style.setProperty('--custom-bg', toHex(shade(base, 0.075)))
+        rootElement.style.setProperty(
+          '--custom-surface',
+          toHex(shade(base, 0.105)),
+        )
+        rootElement.style.setProperty(
+          '--custom-subtle',
+          toHex(shade(base, 0.13)),
+        )
+        rootElement.style.setProperty(
+          '--custom-sidebar',
+          toHex(shade(base, 0.085)),
+        )
+        rootElement.style.setProperty(
+          '--custom-panel',
+          toHex(shade(base, 0.095)),
+        )
+        rootElement.style.setProperty(
+          '--custom-glass',
+          toHex(shade(base, 0.12)),
+        )
+        rootElement.style.setProperty(
+          '--custom-border',
+          toHex([
+            clamp255(br * 0.6 + ar * 0.4),
+            clamp255(bg * 0.6 + ag * 0.4),
+            clamp255(bb * 0.6 + ab * 0.4),
+          ]),
+        )
+      } else {
+        rootElement.style.setProperty('--custom-bg', toHex(shade(base, 0.93)))
+        rootElement.style.setProperty(
+          '--custom-surface',
+          toHex(shade(base, 0.97)),
+        )
+        rootElement.style.setProperty('--custom-subtle', toHex(shade(base, 0.88)))
+        rootElement.style.setProperty('--custom-sidebar', toHex(shade(base, 0.9)))
+        rootElement.style.setProperty('--custom-panel', toHex(shade(base, 0.94)))
+        rootElement.style.setProperty('--custom-glass', toHex(shade(base, 0.95)))
+        rootElement.style.setProperty('--custom-border', toHex(shade(base, 0.78)))
+      }
     } else {
-      rootElement.style.removeProperty('--custom-accent')
-      rootElement.style.removeProperty('--custom-accent-rgb')
+      for (const key of [
+        '--custom-accent',
+        '--custom-accent-rgb',
+        '--custom-bg',
+        '--custom-surface',
+        '--custom-subtle',
+        '--custom-sidebar',
+        '--custom-panel',
+        '--custom-glass',
+        '--custom-border',
+      ])
+        rootElement.style.removeProperty(key)
     }
-  }, [state?.settings.skin, state?.settings.customAccent])
+  }, [
+    state?.settings.skin,
+    state?.settings.customAccent,
+    state?.settings.customBase,
+    state?.settings.customDark,
+  ])
   // 关闭行为偏好与设置变更时同步到主进程。
   useEffect(() => {
     const desktop = window.yingyuDesktop

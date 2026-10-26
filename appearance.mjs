@@ -31,6 +31,11 @@ export function normalizeSettings(input = {}) {
       /^#[0-9a-fA-F]{6}$/.test(input.customAccent)
         ? input.customAccent
         : '#7aa2f7',
+    customBase:
+      typeof input.customBase === 'string' &&
+      /^#[0-9a-fA-F]{6}$/.test(input.customBase)
+        ? input.customBase
+        : '#1a2230',
     customDark:
       typeof input.customDark === 'boolean' ? input.customDark : true,
     deepseekModel:

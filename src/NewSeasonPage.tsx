@@ -69,7 +69,8 @@ export default function NewSeasonPage({
     [seasons, setSeasons] = useState<SeasonOption[]>([]),
     [selected, setSelected] = useState(''),
     [cross, setCross] = useState<SeasonTitle[] | null>(null),
-    [crossBusy, setCrossBusy] = useState(false)
+    [crossBusy, setCrossBusy] = useState(false),
+    [crossCooldown, setCrossCooldown] = useState(0)
   useEffect(() => {
     if (selected) return
     let active = true
@@ -130,6 +131,12 @@ export default function NewSeasonPage({
       setCrossBusy(false)
       return
     }
+    // 资料源不可达时冷却 30 秒，期间直接用本地片单匹配。
+    if (Date.now() < crossCooldown) {
+      setCross(null)
+      setCrossBusy(false)
+      return
+    }
     let active = true
     const timer = setTimeout(() => {
       setCrossBusy(true)
@@ -143,7 +150,11 @@ export default function NewSeasonPage({
           }
         })
         .catch(() => {
-          if (active) setCross([])
+          // 资料源不可达时冷却 30 秒，期间直接用本地片单匹配。
+          if (active) {
+            setCross([])
+            setCrossCooldown(Date.now() + 30000)
+          }
         })
         .finally(() => {
           if (active) setCrossBusy(false)
@@ -155,19 +166,20 @@ export default function NewSeasonPage({
     }
   }, [query])
   const items = useMemo(() => {
-    const searching = Boolean(query.trim())
-    const base = searching
-      ? cross !== null
-        ? cross
-        : (data?.items || data?.slides || [])
+    const keyword = query.trim().toLowerCase()
+    const searching = Boolean(keyword)
+    // 搜索态优先用跨季度结果；Bangumi 不可达或无结果时回退本地片单匹配。
+    const usingCross = searching && Boolean(cross?.length)
+    const base = usingCross
+      ? cross!
       : (data?.items || data?.slides || [])
     const values = base.filter(
       (item) =>
         (filter === 'all' || item.status === filter) &&
-        (searching ||
+        (usingCross ||
           `${item.title} ${item.subtitle}`
             .toLowerCase()
-            .includes(query.trim().toLowerCase())),
+            .includes(keyword)),
     )
     return [...values].sort((a, b) =>
       sort === 'rating'

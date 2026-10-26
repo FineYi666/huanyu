@@ -96,6 +96,7 @@ export interface AppSettings {
   closeAsk: boolean
   closeAction: 'tray' | 'exit'
   customAccent: string
+  customBase: string
   customDark: boolean
 }
 export interface AppState {

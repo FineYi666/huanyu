@@ -380,6 +380,43 @@ export async function createSeasonalService({
     }
     return list
   }
+  // Bangumi 不可达时的离线回退：扫描本机已缓存的季度归档、搜索缓存与当前片单。
+  async function searchLocalArchives(query) {
+    const needle = String(query || '').trim().toLowerCase()
+    if (!needle) return []
+    const seen = new Set()
+    const found = []
+    const sources = [
+      path.join(data, 'recommendations.json'),
+    ]
+    try {
+      for (const entry of await readdir(path.join(data, 'seasonal-archive')))
+        sources.push(path.join(data, 'seasonal-archive', entry))
+    } catch {}
+    try {
+      for (const entry of await readdir(path.join(data, 'search-cache')))
+        sources.push(path.join(data, 'search-cache', entry))
+    } catch {}
+    for (const file of sources) {
+      try {
+        const value = JSON.parse(await readFile(file, 'utf8'))
+        for (const item of value.items || value.results || []) {
+          const key = item.subjectId || item.id
+          if (!key || seen.has(key)) continue
+          if (
+            `${item.title || ''} ${item.subtitle || ''}`
+              .toLowerCase()
+              .includes(needle) &&
+            !item.nsfw
+          ) {
+            seen.add(key)
+            found.push(item)
+          }
+        }
+      } catch {}
+    }
+    return found.slice(0, 40)
+  }
   // 跨季度搜索：2023 年 1 月开播至今（随年份自动扩展）的全部新番。
   // 结果缓存 24 小时：Bangumi 访问异常时，搜过的关键词仍然可用。
   async function search(keyword) {
@@ -412,20 +449,41 @@ export async function createSeasonalService({
         }),
       },
     )
-    const season = seasonAt(now())
-    const results = remember(
-      (response.data || [])
-        .filter((item) => ['TV', 'WEB'].includes(item.platform) && !item.nsfw)
-        .map((item) => mapCatalogItem(item, season)),
-    )
-    if (results.length) {
-      try {
-        await mkdir(path.join(data, 'search-cache'), { recursive: true })
-        await writeFile(
-          path.join(data, 'search-cache', `${digest}.json`),
-          JSON.stringify({ at: Date.now(), results }),
-        )
-      } catch {}
+    let results = []
+    try {
+      const response = await request(
+        'https://api.bgm.tv/v0/search/subjects?limit=40',
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            keyword: query,
+            sort: 'match',
+            filter: {
+              type: [2],
+              air_date: [`>=${start}`],
+              nsfw: false,
+            },
+          }),
+        },
+      )
+      const season = seasonAt(now())
+      results = remember(
+        (response.data || [])
+          .filter((item) => ['TV', 'WEB'].includes(item.platform) && !item.nsfw)
+          .map((item) => mapCatalogItem(item, season)),
+      )
+      if (results.length) {
+        try {
+          await mkdir(path.join(data, 'search-cache'), { recursive: true })
+          await writeFile(
+            path.join(data, 'search-cache', `${digest}.json`),
+            JSON.stringify({ at: Date.now(), results }),
+          )
+        } catch {}
+      }
+    } catch {
+      // Bangumi 不可达（DNS 污染/网络封锁）时，回退扫描本机缓存的季度归档。
+      results = await searchLocalArchives(query)
     }
     return { results }
   }

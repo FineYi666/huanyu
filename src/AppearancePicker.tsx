@@ -19,6 +19,7 @@ export type AppearancePatch = Partial<
     | 'glass'
     | 'ambientMotion'
     | 'customAccent'
+    | 'customBase'
     | 'customDark'
   >
 >
@@ -26,13 +27,14 @@ export type AppearancePatch = Partial<
 // 从导入的图片中提取强调色与明暗基调（高饱和像素加权均值并提亮）。
 function extractPalette(img: HTMLImageElement): {
   accent: string
+  base: string
   dark: boolean
 } {
   const canvas = document.createElement('canvas')
   canvas.width = 48
   canvas.height = 48
   const context = canvas.getContext('2d')
-  if (!context) return { accent: '#7aa2f7', dark: true }
+  if (!context) return { accent: '#7aa2f7', base: '#141a26', dark: true }
   context.drawImage(img, 0, 0, 48, 48)
   const { data } = context.getImageData(0, 0, 48, 48)
   let sumR = 0
@@ -84,7 +86,11 @@ function extractPalette(img: HTMLImageElement): {
   const avgLightness = samples
     ? (sumR + sumG + sumB) / (3 * samples * 255)
     : 0.3
-  return { accent, dark: avgLightness < 0.55 }
+  // 底色：全图平均色（软件背景等整体染色跟随图片主色调）。
+  const base = samples
+    ? toHex([sumR / samples, sumG / samples, sumB / samples])
+    : '#141a26'
+  return { accent, base, dark: avgLightness < 0.55 }
 }
 
 export default function AppearancePicker({
@@ -133,6 +139,7 @@ export default function AppearancePicker({
         skin: 'custom',
         theme: palette.dark ? 'dark' : 'light',
         customAccent: palette.accent,
+        customBase: palette.base,
         customDark: palette.dark,
       })
     } catch (error) {

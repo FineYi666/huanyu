@@ -718,6 +718,11 @@ const server = http.createServer(async (req, res) => {
         /^#[0-9a-fA-F]{6}$/.test(input.customAccent)
       )
         state.settings.customAccent = input.customAccent
+      if (
+        typeof input.customBase === 'string' &&
+        /^#[0-9a-fA-F]{6}$/.test(input.customBase)
+      )
+        state.settings.customBase = input.customBase
       if (typeof input.customDark === 'boolean')
         state.settings.customDark = input.customDark
       if (['light', 'dark'].includes(input.theme))

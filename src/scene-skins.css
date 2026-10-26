@@ -152,40 +152,40 @@ html[data-skin='aurora'][data-theme='light'] {
 /* 自定义幻境：用户导入图片 + 自动取色。 */
 html[data-skin='custom'] {
   --scene-image: url('/skin-background');
-  --bg: #10141c;
-  --surface: #171d29;
-  --subtle: #1e2634;
+  --bg: var(--custom-bg, #10141c);
+  --surface: var(--custom-surface, #171d29);
+  --subtle: var(--custom-subtle, #1e2634);
   --text: #e8edf6;
   --secondary: #94a3b8;
   --muted: #6b7a90;
-  --border: #2a3547;
+  --border: var(--custom-border, #2a3547);
   --green: var(--custom-accent, #7aa2f7);
-  --mint: #24314a;
-  --soft-mint: #1c2839;
-  --sidebar: #131926;
+  --mint: var(--custom-subtle, #24314a);
+  --soft-mint: var(--custom-subtle, #1c2839);
+  --sidebar: var(--custom-sidebar, #131926);
   --accent-rgb: var(--custom-accent-rgb, 122 162 247);
-  --glass-rgb: 24 32 48;
+  --glass-rgb: var(--custom-glass, 24 32 48);
   --glass-edge-rgb: 160 190 240;
-  --panel-rgb: 17 22 34;
+  --panel-rgb: var(--custom-panel, 17 22 34);
   --texture: none;
   --ambient: none;
 }
 html[data-skin='custom'][data-theme='light'] {
-  --bg: #f2f4f8;
-  --surface: #fbfcfe;
-  --subtle: #e9edf4;
+  --bg: var(--custom-bg, #f2f4f8);
+  --surface: var(--custom-surface, #fbfcfe);
+  --subtle: var(--custom-subtle, #e9edf4);
   --text: #232a36;
   --secondary: #6b7688;
   --muted: #8b94a5;
-  --border: #d8dfeb;
+  --border: var(--custom-border, #d8dfeb);
   --green: var(--custom-accent, #4a72c4);
-  --mint: #dfe6f0;
-  --soft-mint: #e8edf5;
-  --sidebar: #eaeef5;
+  --mint: var(--custom-subtle, #dfe6f0);
+  --soft-mint: var(--custom-subtle, #e8edf5);
+  --sidebar: var(--custom-sidebar, #eaeef5);
   --accent-rgb: var(--custom-accent-rgb, 74 114 196);
   --glass-rgb: 242 244 248;
   --glass-edge-rgb: 255 255 255;
-  --panel-rgb: 244 246 250;
+  --panel-rgb: var(--custom-panel, 244 246 250);
 }
 /* 晨雾青屿深色：暖深灰白感（非绿），与珍珠浅色呼应。 */
 html[data-skin='grove'][data-theme='dark'] {
