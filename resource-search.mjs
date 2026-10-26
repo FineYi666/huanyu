@@ -406,6 +406,22 @@ ${row.url || ''}`,
             return flattened
           }),
           collectInto(async () => {
+            // 夸克盘搜（Electron 渲染搜索，桌面版可用时的备用源）
+            if (!renderSearch)
+              throw new Error('网页搜索需要幻屿桌面版')
+            const value = await renderSearch([clean])
+            if (value.error && !value.rows.length)
+              throw new Error(value.error)
+            return (value.rows || []).map((row) => ({
+              title: '',
+              content: `${row.description || row.title || ''}
+${row.url || ''}`,
+              code: row.password || '',
+              time: row.datetime || row.time,
+              source: '夸克盘搜',
+            }))
+          }),
+          collectInto(async () => {
             const sourceUrl = `${BASE}/search?keyword=${encodeURIComponent(clean)}`
             const html = await request(sourceUrl)
             const match = html.match(
@@ -468,6 +484,66 @@ ${row.url || ''}`,
             source: row.source || '',
           })
         }
+        // 失效链接探测：夸克走官方分享 token 接口（失效 → code 41006 等），
+        // 其它网盘用 GET + Range 状态码判断；磁力无法探测，原样保留。
+        const probes = []
+        for (const item of results)
+          for (const link of item.links) {
+            if (link.url.startsWith('magnet:')) continue
+            probes.push({ item, link })
+          }
+        const verdict = new Map()
+        let probeIndex = 0
+        const probeWorker = async () => {
+          while (probeIndex < probes.length) {
+            const entry = probes[probeIndex++]
+            const url = entry.link.url
+            try {
+              if (url.includes('pan.quark.cn')) {
+                const fid = (/pan\.quark\.cn\/s\/([a-zA-Z0-9]+)/.exec(url) || [])[1]
+                if (!fid) {
+                  verdict.set(url, false)
+                  continue
+                }
+                const response = await fetcher(
+                  'https://drive-pc.quark.cn/1/clouddrive/share/sharepage/token?pr=ucpro&fr=pc',
+                  {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                      'User-Agent': UA,
+                    },
+                    body: JSON.stringify({ fid, passcode: '' }),
+                    signal: AbortSignal.timeout(6000),
+                  },
+                )
+                const data = await response.json().catch(() => null)
+                verdict.set(url, data?.code === 0)
+              } else {
+                const response = await fetcher(url, {
+                  method: 'GET',
+                  redirect: 'follow',
+                  headers: { 'User-Agent': UA, Range: 'bytes=0-0' },
+                  signal: AbortSignal.timeout(6000),
+                })
+                const status = response.status
+                await response.body?.cancel?.().catch?.(() => {})
+                verdict.set(url, status < 400 || status === 405)
+              }
+            } catch {
+              verdict.set(url, null)
+            }
+          }
+        }
+        await Promise.all(Array.from({ length: 6 }, probeWorker))
+        for (const item of results)
+          item.links = item.links.filter(
+            (link) =>
+              link.url.startsWith('magnet:') || verdict.get(link.url) !== false,
+          )
+        const alive = results.filter((item) => item.links.length)
+        results.length = 0
+        results.push(...alive)
         const value = {
           query: clean,
           results: results.slice(0, 30),
