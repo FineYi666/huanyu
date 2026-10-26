@@ -45,6 +45,7 @@ import {
   ShieldCheck,
   Sparkles,
   Square,
+  Star,
   Sun,
   Trash2,
   X,
@@ -1494,6 +1495,17 @@ export default function App() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [launchingGame, setLaunchingGame] = useState<string | null>(null)
   const [closeDialog, setCloseDialog] = useState(false)
+  const [movieSeed, setMovieSeed] = useState<
+    {
+      id: string
+      title: string
+      foreignTitle?: string
+      score: number
+      cover: string
+      year: string
+      quote?: string
+    }[]
+  >([])
   const [closeChoice, setCloseChoice] = useState<'tray' | 'exit'>('tray')
   const [closeNoMore, setCloseNoMore] = useState(false)
 
@@ -1583,6 +1595,13 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
+  // 电影页：豆瓣 Top250 推荐种子。
+  useEffect(() => {
+    if (page !== 'movies' || movieSeed.length) return
+    api<{ movies: typeof movieSeed }>('/movie-seed')
+      .then((value) => setMovieSeed(value.movies || []))
+      .catch(() => {})
+  }, [page, movieSeed.length])
   // 自定义皮肤：从图片主色派生整套染色变量（背景/面板/边框随图变色）。
   useEffect(() => {
     const rootElement = document.documentElement
@@ -2248,6 +2267,54 @@ export default function App() {
           )}
           {page !== 'home' && page !== 'games' && (
             <section className="library-section">
+              {page === 'movies' && !query.trim() && movieSeed.length > 0 && (
+                <div className="movie-rec-block">
+                  <div className="movie-rec-head">
+                    <strong>
+                      <Star size={15} /> 豆瓣高分
+                    </strong>
+                    <span>豆瓣 Top250 · 点击封面查找夸克网盘与在线片源</span>
+                  </div>
+                  <div className="movie-rec-row">
+                    {movieSeed.map((movie) => (
+                      <button
+                        key={movie.id}
+                        type="button"
+                        className="movie-rec-card"
+                        title={`豆瓣评分 ${movie.score} · 点击查找资源`}
+                        onClick={() =>
+                          setResourceTarget({
+                            id: movie.id,
+                            title: movie.title,
+                            subtitle: movie.foreignTitle || '',
+                            description: movie.quote
+                              ? `${movie.quote}（豆瓣评分 ${movie.score}）`
+                              : '',
+                            image: movie.cover,
+                          })
+                        }
+                      >
+                        <span className="movie-rec-poster">
+                          <img
+                            src={movie.cover}
+                            alt=""
+                            loading="lazy"
+                            onError={(event) => {
+                              event.currentTarget.style.visibility =
+                                'hidden'
+                            }}
+                          />
+                          <span className="movie-rec-score">
+                            ★ {movie.score}
+                          </span>
+                        </span>
+                        <span className="movie-rec-title">{movie.title}</span>
+                        <span className="movie-rec-year">{movie.year}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               <div className="library-heading">
                 <div className="section-title">
                   <h2>{query ? '搜索结果' : pageNames[page]}</h2>

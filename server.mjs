@@ -446,6 +446,16 @@ const server = http.createServer(async (req, res) => {
           await unlink(path.join(DATA, stale)).catch(() => {})
       return json(res, { ok: true, url: `/skin-background?v=${Date.now()}` })
     }
+    if (route === '/api/movie-seed' && req.method === 'GET') {
+      try {
+        const seed = JSON.parse(
+          await readFile(path.join(ROOT, 'movie-seed.json'), 'utf8'),
+        )
+        return json(res, { movies: seed.movies || [] })
+      } catch {
+        return json(res, { movies: [] })
+      }
+    }
     if (route === '/api/seasonal/seasons' && req.method === 'GET')
       return json(res, { seasons: recommendations.seasons() })
     if (route === '/api/seasonal/search' && req.method === 'GET') {
