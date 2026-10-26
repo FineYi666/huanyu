@@ -233,25 +233,35 @@ export function createResourceSearch({
       const operation = (async () => {
         const sources = [],
           all = []
-        const providers = [
-          {
-            name: '夸克盘搜',
-            url: `https://www.zhongchuangwl.com/s/${encodeURIComponent(queries[0])}/`,
-            async run() {
-              if (!renderSearch) throw new Error('请在桌面版或来源网站中查找')
-              const value = await renderSearch(queries.slice(0, 2))
-              if (value.error && !value.rows.length)
-                throw new Error(value.error)
-              return extractQuarkResults(
-                value.rows.map((row) => ({
-                  ...row,
-                  content: `${row.description || row.title}\n${row.url}`,
-                  source: '夸克盘搜',
-                })),
-                this.url,
-              )
-            },
+        const collect = async (search) => {
+          const values = await Promise.allSettled(
+            queries.slice(0, 2).map(search),
+          )
+          const okay = values.filter((value) => value.status === 'fulfilled')
+          if (!okay.length) throw new Error('来源暂时不可用，请在来源网站重试')
+          return okay.flatMap((value) => value.value)
+        }
+        // 夸克盘搜依赖 Electron 渲染网页（最慢的源），与其余快速源分层处理：
+        // 快速源先到先得立即返回，慢源在后台补全结果并写入缓存供下次使用。
+        const slowProvider = {
+          name: '夸克盘搜',
+          url: `https://www.zhongchuangwl.com/s/${encodeURIComponent(queries[0])}/`,
+          async run() {
+            if (!renderSearch) throw new Error('请在桌面版或来源网站中查找')
+            const value = await renderSearch(queries.slice(0, 2))
+            if (value.error && !value.rows.length)
+              throw new Error(value.error)
+            return extractQuarkResults(
+              value.rows.map((row) => ({
+                ...row,
+                content: `${row.description || row.title}\n${row.url}`,
+                source: '夸克盘搜',
+              })),
+              this.url,
+            )
           },
+        }
+        const fastProviders = [
           {
             name: 'PanSearch',
             url: `${BASE}/search?keyword=${encodeURIComponent(queries[0])}`,
@@ -263,71 +273,90 @@ export function createResourceSearch({
             run: () => collect(pansou),
           },
         ]
-        async function collect(search) {
-          const values = await Promise.allSettled(
-            queries.slice(0, 2).map(search),
-          )
-          const okay = values.filter((value) => value.status === 'fulfilled')
-          if (!okay.length) throw new Error('来源暂时不可用，请在来源网站重试')
-          return okay.flatMap((value) => value.value)
-        }
-        await Promise.all(
-          providers.map(async (provider) => {
-            try {
-              const values = await provider.run()
-              all.push(...values)
-              sources.push({
-                name: provider.name,
-                url: provider.url,
-                status: 'ok',
-                count: values.length,
-              })
-            } catch (error) {
-              sources.push({
-                name: provider.name,
-                url: provider.url,
-                status: 'error',
-                count: 0,
-                message: String(error.message).slice(0, 120),
-              })
-            }
-          }),
-        )
-        const unique = new Map()
-        for (const item of all) {
-          if (
-            !queries.some((name) =>
-              normalized(item.title).includes(normalized(name)),
-            )
-          )
-            continue
-          const match = resourceSeasonMatch(item.title, query)
-          const existing = unique.get(item.id)
-          if (existing) {
-            existing.sources = [...new Set([...existing.sources, item.source])]
-            if (!existing.code && item.code) existing.code = item.code
-            continue
+        const providers = [slowProvider, ...fastProviders]
+        const collectInto = async (provider, sink) => {
+          try {
+            const values = await provider.run()
+            sink.push(...values)
+            sources.push({
+              name: provider.name,
+              url: provider.url,
+              status: 'ok',
+              count: values.length,
+            })
+          } catch (error) {
+            sources.push({
+              name: provider.name,
+              url: provider.url,
+              status: 'error',
+              count: 0,
+              message: String(error.message).slice(0, 120),
+            })
           }
-          unique.set(item.id, { ...item, sources: [item.source], match })
         }
-        const rank = { season: 0, related: 1, 'other-season': 2 }
-        const results = [...unique.values()]
-          .sort(
-            (a, b) =>
-              rank[a.match] - rank[b.match] ||
-              String(b.updatedAt || '').localeCompare(
-                String(a.updatedAt || ''),
-              ),
-          )
-          .slice(0, 40)
-        const value = {
-          query,
-          queries,
-          source: '多源搜索',
-          sourceUrl: providers[0].url,
-          sources: providers.map((p) => sources.find((s) => s.name === p.name)),
-          results,
-          searchedAt: new Date(now()).toISOString(),
+        const slowCollector = (async () => {
+          for (const provider of [slowProvider]) await collectInto(provider, all)
+        })().catch(() => {})
+        await Promise.allSettled(
+          fastProviders.map((provider) => collectInto(provider, all)),
+        )
+        const buildValue = (items, providerList) => {
+          const unique = new Map()
+          for (const item of items) {
+            if (
+              !queries.some((name) =>
+                normalized(item.title).includes(normalized(name)),
+              )
+            )
+              continue
+            const match = resourceSeasonMatch(item.title, query)
+            const existing = unique.get(item.id)
+            if (existing) {
+              existing.sources = [...new Set([...existing.sources, item.source])]
+              if (!existing.code && item.code) existing.code = item.code
+              continue
+            }
+            unique.set(item.id, { ...item, sources: [item.source], match })
+          }
+          const rank = { season: 0, related: 1, 'other-season': 2 }
+          const results = [...unique.values()]
+            .sort(
+              (a, b) =>
+                rank[a.match] - rank[b.match] ||
+                String(b.updatedAt || '').localeCompare(
+                  String(a.updatedAt || ''),
+                ),
+            )
+            .slice(0, 40)
+          return {
+            query,
+            queries,
+            source: '多源搜索',
+            sourceUrl: providers[0].url,
+            sources: providerList
+              .map((p) => {
+                const found = sources.find((s) => s.name === p.name)
+                return found || null
+              })
+              .filter(Boolean),
+            results,
+            searchedAt: new Date(now()).toISOString(),
+          }
+        }
+        let value = buildValue(all, providers)
+        if (!value.results.length) {
+          // 快速源颗粒无收，等待慢源（Electron 渲染搜索）补全。
+          await slowCollector
+          value = buildValue(all, providers)
+        } else {
+          // 快速源已有结果立即返回；慢源完成后把结果并入缓存供下次使用。
+          void slowCollector.then(() => {
+            if (!all.length) return
+            const refreshed = buildValue(all, providers)
+            if (!refreshed.results.length) return
+            if (cache.size >= 80) cache.delete(cache.keys().next().value)
+            cache.set(key, { at: now(), value: refreshed })
+          })
         }
         if (cache.size >= 80) cache.delete(cache.keys().next().value)
         cache.set(key, { at: now(), value })

@@ -1,4 +1,5 @@
 import path from 'node:path'
+import { createHash } from 'node:crypto'
 import { readFile, writeFile, rename, mkdir, readdir } from 'node:fs/promises'
 import { downloadPoster } from './metadata.mjs'
 
@@ -380,9 +381,20 @@ export async function createSeasonalService({
     return list
   }
   // 跨季度搜索：2023 年 1 月开播至今（随年份自动扩展）的全部新番。
+  // 结果缓存 24 小时：Bangumi 访问异常时，搜过的关键词仍然可用。
   async function search(keyword) {
     const query = String(keyword || '').trim().slice(0, 60)
     if (!query) return { results: [] }
+    const digest = createHash('sha256')
+      .update(`search:${query.toLowerCase()}`)
+      .digest('hex')
+      .slice(0, 24)
+    const cacheFile = path.join(data, 'search-cache', `${digest}.json`)
+    try {
+      const cached = JSON.parse(await readFile(cacheFile, 'utf8'))
+      if (Date.now() - cached.at < 24 * 3600000 && cached.results?.length)
+        return { results: remember(cached.results), cached: true }
+    } catch {}
     const request = bangumiRequest(fetcher)
     const start = `${now().getFullYear() - 3}-01-01`
     const response = await request(
@@ -401,11 +413,21 @@ export async function createSeasonalService({
       },
     )
     const season = seasonAt(now())
-    return {
-      results: remember((response.data || [])
+    const results = remember(
+      (response.data || [])
         .filter((item) => ['TV', 'WEB'].includes(item.platform) && !item.nsfw)
-        .map((item) => mapCatalogItem(item, season))),
+        .map((item) => mapCatalogItem(item, season)),
+    )
+    if (results.length) {
+      try {
+        await mkdir(path.join(data, 'search-cache'), { recursive: true })
+        await writeFile(
+          path.join(data, 'search-cache', `${digest}.json`),
+          JSON.stringify({ at: Date.now(), results }),
+        )
+      } catch {}
     }
+    return { results }
   }
   // Imports must resolve trusted works across viewed quarters and search results,
   // rather than treating membership of the current banner as import permission.
