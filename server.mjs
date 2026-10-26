@@ -21,6 +21,7 @@ import { fetchVideoSource, rewritePlaylist } from './video-stream.mjs'
 import { mediaCategory } from './media-category.mjs'
 import { createResourceSearch } from './resource-search.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
+import { createWebSources } from './web-sources.mjs'
 import { attachSeasonalMetadata } from './seasonal-metadata.mjs'
 import { createSubtitleService } from './subtitle-service.mjs'
 import { replaceMediaSource } from './replace-source.mjs'
@@ -36,6 +37,7 @@ const localBrowser = createLocalBrowser()
 const resourceSearch = createResourceSearch({
   renderSearch: createRenderedSearch(ROOT),
 })
+const webSources = createWebSources()
 await mkdir(DATA, { recursive: true })
 await mkdir(path.join(DATA, 'covers'), { recursive: true })
 const recommendations = await createSeasonalService({ root: ROOT, data: DATA })
@@ -900,6 +902,31 @@ const server = http.createServer(async (req, res) => {
       if (input.autoMetadata !== false)
         for (const id of imported) void enrichGame(id)
       return json(res, { results, imported: imported.length, ...publicState() })
+    }
+    if (route === '/api/web-sources/search' && req.method === 'POST') {
+      const input = await body(req)
+      const keyword = String(input?.keyword || '').trim()
+      if (keyword.length < 2)
+        return json(res, { error: '请输入 2 个字以上的名称' }, 400)
+      return json(res, await webSources.search(keyword))
+    }
+    // 网页源在线播放代理：m3u8/mp4 直链经幻屿转发（支持 Range 与 HLS）。
+    if (route === '/api/web-stream' && req.method === 'POST') {
+      const input = await body(req)
+      const target = String(input?.url || '')
+      if (!/^https?:\/\//.test(target))
+        return json(res, { error: '播放地址不正确' }, 400)
+      const source = await fetchVideoSource(
+        { url: target, headers: input?.headers || {} },
+        { method: 'GET' },
+      )
+      const token = randomUUID()
+      streamCache.set(token, {
+        url: target,
+        headers: input?.headers || {},
+        expires: Date.now() + 4 * 3600000,
+      })
+      return json(res, { url: `${origin}/api/stream/${token}`, format: source?.format || 'file' })
     }
     if (route === '/api/games/search' && req.method === 'GET') {
       try {

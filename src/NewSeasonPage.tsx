@@ -13,6 +13,8 @@ import {
   History,
 } from 'lucide-react'
 import { api } from './api'
+import StreamVideo from './StreamVideo'
+import Dialog from './ui'
 import HeroCarousel from './HeroCarousel'
 import Poster from './Poster'
 import type { SkinId } from './skins'
@@ -31,6 +33,15 @@ export type SeasonTitle = {
   sourceUrl?: string
   platform?: string
   status?: string
+}
+type WebSourceResult = {
+  id: string
+  sourceName: string
+  title: string
+  cover: string
+  year: string
+  remarks: string
+  episodes: { title: string; url: string }[]
 }
 type Catalog = {
   season: { id: string; label: string; monthLabel?: string }
@@ -485,9 +496,47 @@ export function ResourceSearch({
   >([])
   const [terms, setTerms] = useState<string[]>([])
   const abort = useRef<AbortController | null>(null)
+  const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
+  const [webBusy, setWebBusy] = useState(false)
+  const [webOpen, setWebOpen] = useState<string | null>(null)
+  const [webEpisodes, setWebEpisodes] = useState<{ title: string; url: string }[]>([])
+  const [webPlaying, setWebPlaying] = useState<{ title: string; stream: string; format: string } | null>(null)
+  const [webError, setWebError] = useState('')
+  async function loadWebSources(keyword: string) {
+    setWebBusy(true)
+    setWebError('')
+    try {
+      const value = await api<{ results: WebSourceResult[] }>(
+        '/web-sources/search',
+        { keyword },
+      )
+      setWebSources(value.results || [])
+    } catch (e) {
+      setWebError((e as Error).message)
+      setWebSources([])
+    } finally {
+      setWebBusy(false)
+    }
+  }
+  async function playWebEpisode(episode: { title: string; url: string }, title: string) {
+    setWebError('')
+    try {
+      const value = await api<{ url: string; format: string }>('/web-stream', {
+        url: episode.url,
+      })
+      setWebPlaying({
+        title: `${title} · ${episode.title}`,
+        stream: value.url,
+        format: value.format || 'hls',
+      })
+    } catch (e) {
+      setWebError((e as Error).message)
+    }
+  }
   async function search(value: string) {
     abort.current?.abort()
     const controller = new AbortController()
+    void loadWebSources(value)
     abort.current = controller
     setLoading(true)
     setError('')
@@ -702,6 +751,93 @@ export function ResourceSearch({
           </p>
         </div>
       ) : null}
+      <div className="web-sources-block">
+        <div className="web-sources-head">
+          <strong>在线片源 · 立即播放</strong>
+          <span>聚合公开资源站的在线视频，点击集数直接播放</span>
+        </div>
+        {webBusy ? (
+          <div className="season-empty">
+            <LoaderCircle size={24} className="spin" />
+            <h3>正在聚合在线片源…</h3>
+          </div>
+        ) : webError ? (
+          <p className="web-sources-error">{webError}</p>
+        ) : webSources && webSources.length ? (
+          <div className="web-source-list">
+            {webSources.map((item) => (
+              <div className="web-source-card" key={item.id}>
+                <img
+                  src={item.cover}
+                  alt=""
+                  loading="lazy"
+                  onError={(event) => {
+                    event.currentTarget.style.visibility = 'hidden'
+                  }}
+                />
+                <div className="web-source-copy">
+                  <h4>{item.title}</h4>
+                  <span>
+                    {item.sourceName}
+                    {item.year ? ` · ${item.year}` : ''}
+                    {item.remarks ? ` · ${item.remarks}` : ''} ·{' '}
+                    {item.episodes.length} 集
+                  </span>
+                  <div className="web-source-episodes">
+                    {webOpen === item.id ? (
+                      item.episodes.map((episode) => (
+                        <button
+                          key={episode.url}
+                          type="button"
+                          onClick={() =>
+                            void playWebEpisode(episode, item.title)
+                          }
+                        >
+                          {episode.title}
+                        </button>
+                      ))
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWebOpen(item.id)
+                          setWebEpisodes(item.episodes)
+                        }}
+                      >
+                        展开 {item.episodes.length} 集
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : webSources ? (
+          <p className="web-sources-error">
+            各资源站暂未收录这部作品，可尝试其它关键词。
+          </p>
+        ) : null}
+      </div>
+      {webPlaying && (
+        <Dialog
+          title={webPlaying.title}
+          onClose={() => setWebPlaying(null)}
+          className="web-player-dialog"
+        >
+          <div className="web-player-body">
+            <StreamVideo
+              src={webPlaying.stream}
+              format={webPlaying.format}
+              onStreamError={(message) => setWebError(message)}
+              autoPlay
+              controls
+            />
+          </div>
+          <p className="web-player-note">
+            在线片源来自公开资源站，稳定性视站点而定；可关闭后选择其它集数或来源。
+          </p>
+        </Dialog>
+      )}
       <div className="resource-fallback-actions">
         <button
           className="button outline"

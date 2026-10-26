@@ -3718,3 +3718,100 @@ html[data-platform='darwin'] .app-shell .topbar {
 .custom-skin-error {
   color: #e5484d;
 }
+
+/* ---------- 在线片源（网页源） ---------- */
+.web-sources-block {
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+  padding-top: 16px;
+}
+.web-sources-head strong {
+  font-size: 14px;
+}
+.web-sources-head span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--secondary);
+}
+.web-sources-error {
+  font-size: 12px;
+  color: var(--secondary);
+}
+.web-source-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 12px;
+  max-height: 320px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+.web-source-card {
+  display: flex;
+  gap: 12px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--subtle);
+}
+.web-source-card img {
+  width: 106px;
+  height: 62px;
+  object-fit: cover;
+  border-radius: 7px;
+  flex-shrink: 0;
+}
+.web-source-copy {
+  min-width: 0;
+  flex: 1;
+}
+.web-source-copy h4 {
+  margin: 0;
+  font-size: 13.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.web-source-copy > span {
+  display: block;
+  margin: 3px 0 7px;
+  font-size: 11px;
+  color: var(--secondary);
+}
+.web-source-episodes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.web-source-episodes button {
+  font-size: 11.5px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 4px 10px;
+  transition:
+    border-color 0.15s,
+    color 0.15s;
+}
+.web-source-episodes button:hover {
+  border-color: rgb(var(--accent-rgb) / 0.6);
+  color: var(--green);
+}
+.web-player-dialog .web-player-body {
+  background: #000;
+  border-radius: 10px;
+  overflow: hidden;
+}
+.web-player-dialog video {
+  width: 100%;
+  max-height: 62vh;
+  display: block;
+  background: #000;
+}
+.web-player-note {
+  margin: 12px 0 0;
+  font-size: 11.5px;
+  color: var(--secondary);
+}
