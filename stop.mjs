@@ -1,5 +1,8 @@
 import { readFile, unlink } from 'node:fs/promises'
-const file = new URL('./data/session.json', import.meta.url)
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { resolveAppData } from './app-data.mjs'
+const file = path.join(resolveAppData(path.dirname(fileURLToPath(import.meta.url))), 'session.json')
 try {
   const session = JSON.parse(await readFile(file, 'utf8'))
   if (

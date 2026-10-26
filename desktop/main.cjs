@@ -10,6 +10,7 @@ const {
 const path = require('node:path')
 const { execFile } = require('node:child_process')
 const { readFile, writeFile } = require('node:fs/promises')
+const { pathToFileURL } = require('node:url')
 const { promisify } = require('node:util')
 const { allowFullscreen } = require('./permissions.cjs')
 
@@ -48,6 +49,8 @@ else {
   })
   app.whenReady().then(async () => {
     try {
+      const { prepareAppData } = await import(pathToFileURL(path.join(root, 'app-data.mjs')).href)
+      const userDataDirectory = await prepareAppData(root)
       if (isMac) {
         // 便携 zip 不保留可执行位，首次启动自动补齐。
         for (const target of [
@@ -131,7 +134,7 @@ else {
             )
           } catch {}
           void writeFile(
-            path.join(root, 'data', 'desktop-session.json'),
+            path.join(userDataDirectory, 'desktop-session.json'),
             JSON.stringify({
               pid: process.pid,
               name: app.name,

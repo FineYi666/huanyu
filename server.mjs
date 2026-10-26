@@ -26,9 +26,10 @@ import { createSubtitleService } from './subtitle-service.mjs'
 import { replaceMediaSource } from './replace-source.mjs'
 import { createEmbeddedSubtitles, subtitleContainer } from './embedded-subtitles.mjs'
 import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, parseLaunchArgs, searchSteamApps, fetchSteamAppDetail } from './games.mjs'
+import { prepareAppData } from './app-data.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
-const DATA = process.env.YINGYU_DATA_DIR || path.join(ROOT, 'data')
+const DATA = await prepareAppData(ROOT)
 const PORT = Number(process.env.YINGYU_PORT || 4317)
 const DEV = process.argv.includes('--dev')
 const localBrowser = createLocalBrowser()

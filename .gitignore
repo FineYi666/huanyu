@@ -12,3 +12,5 @@ docs/screenshots/*.tmp
 debug.log
 nul
 installer/staging2/
+installer/package-*/
+installer/output/

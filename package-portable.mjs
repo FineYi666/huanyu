@@ -18,6 +18,8 @@ await mkdir(path.join(out, 'runtime'), { recursive: true })
 await cp(path.join(root, 'dist'), path.join(out, 'dist'), { recursive: true })
 for (const file of [
   'server.mjs',
+  'games.mjs',
+  'app-data.mjs',
   'media-utils.mjs',
   'local-browser.mjs',
   'quark.mjs',

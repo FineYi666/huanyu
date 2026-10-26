@@ -4,6 +4,7 @@ import { mkdir, writeFile, stat, readFile } from 'node:fs/promises'
 import { openSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
+import { prepareAppData } from './app-data.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const port = Number(process.env.YINGYU_PORT || 4317)
@@ -53,7 +54,7 @@ try {
   }
   await stat(path.join(root, 'dist', 'index.html'))
   if (!(await running())) {
-    const data = path.join(root, 'data')
+    const data = await prepareAppData(root)
     await mkdir(data, { recursive: true })
     const log = openSync(path.join(data, 'server.log'), 'a')
     const errors = openSync(path.join(data, 'error.log'), 'a')
@@ -80,7 +81,7 @@ try {
     }
     if (!ready)
       throw new Error(
-        '启动失败，请查看 data/error.log。也可以在终端运行 node server.mjs 了解原因。',
+        `启动失败，请查看 ${path.join(data, 'error.log')}。`,
       )
   }
   console.log('幻屿后台已就绪。')
