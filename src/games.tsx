@@ -82,57 +82,34 @@ type GameResource = {
   source: string
 }
 
-// 游戏资源搜索：聚合公开网盘与磁力站，独立于游戏卡片网格（无游戏时也可用）。
-export function GameResourceSearch({ notify }: { notify: (message: string) => void }) {
+// Only the two configured game websites supply resource results.
+export function GameResourceSearch() {
   const [resourceQuery, setResourceQuery] = useState('')
   const [resourceResults, setResourceResults] = useState<GameResource[] | null>(
     null,
   )
   const [resourceBusy, setResourceBusy] = useState(false)
   const [resourceError, setResourceError] = useState('')
-  const [copied, setCopied] = useState('')
+  const searchRevision = useRef(0)
+  const [resourceSources, setResourceSources] = useState<{name: string; status: string; count: number}[]>([])
   async function searchResources() {
     const keyword = resourceQuery.trim()
     if (keyword.length < 2 || resourceBusy) return
+    const revision = ++searchRevision.current
     setResourceBusy(true)
     setResourceError('')
+    setResourceResults(null)
     try {
-      const value = await api<{ results: GameResource[] }>(
+      const value = await api<{ results: GameResource[]; sources: typeof resourceSources }>(
         `/games/resource-search?q=${encodeURIComponent(keyword)}`,
       )
+      if (revision !== searchRevision.current) return
       setResourceResults(value.results || [])
+      setResourceSources(value.sources || [])
     } catch (error) {
-      setResourceError((error as Error).message)
+      if (revision === searchRevision.current) setResourceError((error as Error).message)
     } finally {
-      setResourceBusy(false)
-    }
-  }
-  async function copyLink(link: GameResourceLink) {
-    const url = link.url
-    try {
-      await navigator.clipboard.writeText(url)
-      setCopied(url)
-      setTimeout(() => setCopied(''), 1500)
-      if (url.startsWith('magnet:')) {
-        notify('磁力链接已复制，可在下载工具中新建任务')
-      } else if (window.yingyuDesktop?.openWeb) {
-        await window.yingyuDesktop.openWeb(url)
-        notify('已打开资源页面，登录网盘后转存即可下载')
-      } else {
-        window.open(url, '_blank')
-        notify('链接已复制并打开网盘页面，转存到你的网盘后即可下载')
-      }
-    } catch {
-      // Electron 剪贴板不可用时的兜底：选中文本供手动复制
-      const helper = document.createElement('textarea')
-      helper.value = url
-      document.body.appendChild(helper)
-      helper.select()
-      document.execCommand('copy')
-      helper.remove()
-      setCopied(url)
-      setTimeout(() => setCopied(''), 1500)
-      notify(url.startsWith('magnet:') ? '磁力链接已复制' : '链接已复制')
+      if (revision === searchRevision.current) setResourceBusy(false)
     }
   }
   return (
@@ -140,13 +117,13 @@ export function GameResourceSearch({ notify }: { notify: (message: string) => vo
       <div className="game-resource-head">
         <strong>搜索游戏资源</strong>
         <span>
-          聚合公开网盘与磁力站的游戏资源，复制链接转存网盘后下载导入
+          仅搜索芝士游戏与 Game Share，点击已验证的详情页查看下载入口
         </span>
       </div>
       <div className="game-resource-row">
         <input
           value={resourceQuery}
-          onChange={(e) => setResourceQuery(e.target.value)}
+          onChange={(e) => { searchRevision.current++; setResourceBusy(false); setResourceQuery(e.target.value); setResourceResults(null); setResourceError(''); setResourceSources([]) }}
           onKeyDown={(e) => {
             if (e.key === 'Enter') void searchResources()
           }}
@@ -171,6 +148,7 @@ export function GameResourceSearch({ notify }: { notify: (message: string) => vo
       {resourceError && (
         <p className="game-resource-error">{resourceError}</p>
       )}
+      {resourceSources.length > 0 && <div className="game-source-status">{resourceSources.map((site) => <span key={site.name}>{site.name} · {site.status === 'ok' ? `${site.count} 条` : '暂时无法连接'}</span>)}</div>}
       {resourceResults && (
         <div className="game-resource-results">
           {resourceResults.length ? (
@@ -180,26 +158,19 @@ export function GameResourceSearch({ notify }: { notify: (message: string) => vo
                   <h4>{item.title}</h4>
                   <span>
                     {item.date ? `${item.date.slice(0, 10)} · ` : ''}
-                    {item.links.map((l) => l.type).join(' / ')}
+                    {item.source} · 来源页面已验证
                   </span>
                 </div>
                 <div className="game-resource-links">
                   {item.links.map((link) => (
-                    <button
-                      key={link.url}
-                      type="button"
-                      onClick={() => void copyLink(link)}
-                      title={link.url}
-                    >
-                      {copied === link.url ? '已复制' : link.type}
-                    </button>
+                    <a key={link.url} href={link.url} target="_blank" rel="noopener noreferrer" title={link.url}>{link.type} ↗</a>
                   ))}
                 </div>
               </div>
             ))
           ) : (
             <p className="game-resource-error">
-              没有找到相关资源，可以换一个名称或添加空格重试。
+              没有找到相关游戏资源。
             </p>
           )}
         </div>
@@ -214,7 +185,6 @@ export default function GamesPage({
   onOpen,
   onLaunch,
   onFavorite,
-  notify,
 }: {
   games: Game[]
   launchingId: string | null

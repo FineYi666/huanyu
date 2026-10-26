@@ -21,6 +21,7 @@ import type { SkinId } from './skins'
 import type { AppState, Media } from './types'
 
 export type SeasonTitle = {
+  category?: 'anime' | 'movie'
   replaceMediaId?: string
   id: string
   title: string
@@ -580,7 +581,7 @@ export function ResourceSearch({
           url: resource.url,
           code: resource.code,
           title: subject.title,
-          category: 'anime',
+          category: subject.category || 'anime',
           subjectId: subject.id,
         },
       )
@@ -599,7 +600,7 @@ export function ResourceSearch({
           <img src={subject.image} alt="" referrerPolicy="no-referrer" />
         )}
         <div>
-          <span className="season-kicker">QUARK RESOURCES</span>
+          <span className="season-kicker">{subject.category === 'movie' ? 'MOVIE SOURCES' : 'QUARK RESOURCES'}</span>
           <h3>{subject.title}</h3>
           <p>
             {subject.description ||
@@ -646,7 +647,7 @@ export function ResourceSearch({
       </form>
       <p className="resource-note">
         同时搜索夸克盘搜、PanSearch 和
-        PanSou，自动尝试别名。请核对季数与字幕；导入时验证分享，播放前确认转存。
+        PanSou，自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
       <div className="resource-source-status" aria-label="搜索来源状态">
         {loading ? (

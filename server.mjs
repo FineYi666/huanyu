@@ -20,6 +20,8 @@ import { createQuarkLogin } from './quark-login.mjs'
 import { fetchVideoSource, rewritePlaylist } from './video-stream.mjs'
 import { mediaCategory } from './media-category.mjs'
 import { createResourceSearch } from './resource-search.mjs'
+import { createGameResourceSearch } from './game-resources.mjs'
+import { createMovieCatalog } from './movie-catalog.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
 import { createWebSources } from './web-sources.mjs'
 import { attachSeasonalMetadata } from './seasonal-metadata.mjs'
@@ -30,6 +32,10 @@ import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, pars
 import { prepareAppData } from './app-data.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+const movieCatalog = await createMovieCatalog(ROOT)
+const gameResources = createGameResourceSearch()
+const importSubject = (id) => typeof id === 'string' && id.startsWith('douban-')
+  ? movieCatalog.findSubject(id) : recommendations.findSubject(id)
 const DATA = await prepareAppData(ROOT)
 const PORT = Number(process.env.YINGYU_PORT || 4317)
 const DEV = process.argv.includes('--dev')
@@ -447,14 +453,7 @@ const server = http.createServer(async (req, res) => {
       return json(res, { ok: true, url: `/skin-background?v=${Date.now()}` })
     }
     if (route === '/api/movie-seed' && req.method === 'GET') {
-      try {
-        const seed = JSON.parse(
-          await readFile(path.join(ROOT, 'movie-seed.json'), 'utf8'),
-        )
-        return json(res, { movies: seed.movies || [] })
-      } catch {
-        return json(res, { movies: [] })
-      }
+      return json(res, movieCatalog.get({ query: url.searchParams.get('q') || '', genre: url.searchParams.get('genre') || '全部', sort: url.searchParams.get('sort') || 'rank' }))
     }
     if (route === '/api/seasonal/seasons' && req.method === 'GET')
       return json(res, { seasons: recommendations.seasons() })
@@ -489,7 +488,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/resources/search' && req.method === 'POST') {
       const input = await body(req)
-      const subject = await recommendations.findSubject(input.subjectId).catch(() => undefined)
+      const subject = await Promise.resolve(importSubject(input.subjectId)).catch(() => undefined)
       const useAliases =
         subject &&
         [subject.title, subject.subtitle].includes(input.query?.trim())
@@ -547,7 +546,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/import/local' && req.method === 'POST') {
       const input = await body(req)
-      const subject = await recommendations.findSubject(input.subjectId)
+      const subject = await importSubject(input.subjectId)
       if (input.subjectId && !subject)
         return json(res, { error: '无法识别这部作品的资料，请重新打开作品后重试' }, 400)
       if (subject && input.splitByFolder)
@@ -651,7 +650,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/import/quark' && req.method === 'POST') {
       const input = await body(req)
-      const subject = await recommendations.findSubject(input.subjectId)
+      const subject = await importSubject(input.subjectId)
       if (input.subjectId && !subject)
         return json(res, { error: '无法识别这部作品的资料，请重新打开作品后重试' }, 400)
       const media = await quark.importShare(
@@ -940,7 +939,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/games/resource-search' && req.method === 'GET') {
       try {
-        return json(res, await resourceSearch.searchGames(url.searchParams.get('q') || ''))
+        return json(res, await gameResources.search(url.searchParams.get('q') || ''))
       } catch (error) {
         return json(res, { error: error.message || '游戏资源搜索暂时不可用' }, error.status || 502)
       }

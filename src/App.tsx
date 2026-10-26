@@ -5,7 +5,6 @@ import {
   useRef,
   useState,
   type CSSProperties,
-  type ReactNode,
 } from 'react'
 import {
   ArrowDownAZ,
@@ -58,6 +57,7 @@ import GamesPage, {
   GameResourceSearch,
 } from './games'
 import type { AppState, Episode, Game, Media } from './types'
+import MovieDiscovery from './MovieDiscovery'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
 import DeepSeekSettings from './DeepSeekSettings'
 import { episodeLabel, matchesEpisode } from './episode-labels'
@@ -88,6 +88,7 @@ type Page =
   | 'library'
   | 'anime'
   | 'movies'
+  | 'movie-discovery'
   | 'games'
   | 'favorites'
   | 'history'
@@ -104,6 +105,7 @@ const pageNames = {
   library: '我的媒体库',
   anime: '动漫',
   movies: '电影',
+  'movie-discovery': '豆瓣高分电影',
   games: '游戏空间',
   favorites: '我的收藏',
   history: '观看记录',
@@ -1495,17 +1497,6 @@ export default function App() {
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [launchingGame, setLaunchingGame] = useState<string | null>(null)
   const [closeDialog, setCloseDialog] = useState(false)
-  const [movieSeed, setMovieSeed] = useState<
-    {
-      id: string
-      title: string
-      foreignTitle?: string
-      score: number
-      cover: string
-      year: string
-      quote?: string
-    }[]
-  >([])
   const [closeChoice, setCloseChoice] = useState<'tray' | 'exit'>('tray')
   const [closeNoMore, setCloseNoMore] = useState(false)
 
@@ -1595,13 +1586,6 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
-  // 电影页：豆瓣 Top250 推荐种子。
-  useEffect(() => {
-    if (page !== 'movies' || movieSeed.length) return
-    api<{ movies: typeof movieSeed }>('/movie-seed')
-      .then((value) => setMovieSeed(value.movies || []))
-      .catch(() => {})
-  }, [page, movieSeed.length])
   // 自定义皮肤：从图片主色派生整套染色变量（背景/面板/边框随图变色）。
   useEffect(() => {
     const rootElement = document.documentElement
@@ -1955,6 +1939,7 @@ export default function App() {
               { id: 'home', icon: LayoutGrid, label: '新番' },
               { id: 'anime', icon: Play, label: '动漫' },
               { id: 'movies', icon: Film, label: '电影' },
+              { id: 'movie-discovery', icon: Star, label: '高分电影' },
               { id: 'games', icon: Gamepad2, label: '游戏' },
               { id: 'favorites', icon: Heart, label: '收藏' },
               { id: 'history', icon: History, label: '最近观看' },
@@ -1984,7 +1969,7 @@ export default function App() {
               <Search size={17} />
               <input
                 ref={search}
-                placeholder="搜索你想看的故事"
+                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'movies' ? '搜索我的电影' : '搜索你想看的故事'}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label="搜索作品"
@@ -2061,6 +2046,8 @@ export default function App() {
                   ? '这一季的相遇，从这里开始。浏览新番，发现资源，收藏喜欢的故事。'
                   : page === 'anime'
                     ? '连载与长篇，收进专属的动漫片库。'
+                    : page === 'movie-discovery'
+                      ? '按片名寻找，按类型探索，把喜欢的电影收进片库。'
                     : page === 'movies'
                       ? '为完整的一场光影，留一个专门的位置。'
                       : page === 'library'
@@ -2072,7 +2059,7 @@ export default function App() {
                             : '每一次暂停，都是下一次相遇的起点。'}
               </p>
             </div>
-            {page === 'games' ? (
+            {page === 'movie-discovery' ? <button className="button outline import-main" onClick={() => nav('movies')}><Film size={17} /> 我的电影</button> : page === 'games' ? (
               <button
                 className="button primary import-main"
                 onClick={() => setGameImporting(true)}
@@ -2186,7 +2173,7 @@ export default function App() {
                   </span>
                 </div>
               </div>
-              <GameResourceSearch notify={notify} />
+              <GameResourceSearch />
               {!state ? (
                 <div className="empty-state">
                   {loadError ? (
@@ -2265,56 +2252,10 @@ export default function App() {
               </footer>
             </section>
           )}
-          {page !== 'home' && page !== 'games' && (
+          {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} />}
+          {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
-              {page === 'movies' && !query.trim() && movieSeed.length > 0 && (
-                <div className="movie-rec-block">
-                  <div className="movie-rec-head">
-                    <strong>
-                      <Star size={15} /> 豆瓣高分
-                    </strong>
-                    <span>豆瓣 Top250 · 点击封面查找夸克网盘与在线片源</span>
-                  </div>
-                  <div className="movie-rec-row">
-                    {movieSeed.map((movie) => (
-                      <button
-                        key={movie.id}
-                        type="button"
-                        className="movie-rec-card"
-                        title={`豆瓣评分 ${movie.score} · 点击查找资源`}
-                        onClick={() =>
-                          setResourceTarget({
-                            id: movie.id,
-                            title: movie.title,
-                            subtitle: movie.foreignTitle || '',
-                            description: movie.quote
-                              ? `${movie.quote}（豆瓣评分 ${movie.score}）`
-                              : '',
-                            image: movie.cover,
-                          })
-                        }
-                      >
-                        <span className="movie-rec-poster">
-                          <img
-                            src={movie.cover}
-                            alt=""
-                            loading="lazy"
-                            onError={(event) => {
-                              event.currentTarget.style.visibility =
-                                'hidden'
-                            }}
-                          />
-                          <span className="movie-rec-score">
-                            ★ {movie.score}
-                          </span>
-                        </span>
-                        <span className="movie-rec-title">{movie.title}</span>
-                        <span className="movie-rec-year">{movie.year}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
+              {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
               <div className="library-heading">
                 <div className="section-title">
                   <h2>{query ? '搜索结果' : pageNames[page]}</h2>
@@ -2616,7 +2557,7 @@ export default function App() {
       )}
       {resourceTarget && (
         <Dialog
-          title="查找夸克资源"
+          title={resourceTarget.category === 'movie' ? '查找电影片源' : '查找夸克资源'}
           className="resource-dialog"
           onClose={() => {
             if (!resourceBusy) setResourceTarget(null)
@@ -2639,7 +2580,7 @@ export default function App() {
               setResourceTarget(null)
               setSelected(ids[0] || null)
               nav(categoryOf(data.media.find(media => media.id === ids[0]) || ({} as Media)) === 'movie' ? 'movies' : 'anime')
-              notify(resourceTarget.replaceMediaId ? `已替换为 ${count} 个视频，作品资料与收藏已保留` : `已将 ${count} 个视频导入动漫区`)
+              notify(resourceTarget.replaceMediaId ? `已替换为 ${count} 个视频，作品资料与收藏已保留` : `已将 ${count} 个视频导入${resourceTarget.category === 'movie' ? '电影' : '动漫'}区`)
             }}
           />
         </Dialog>
@@ -2656,7 +2597,7 @@ export default function App() {
           }}
           categoryPreset={
             importing.replacement ? categoryOf(importing.replacement) : importing.subject
-              ? 'anime'
+              ? importing.subject.category || 'anime'
               : page === 'movies'
                 ? 'movie'
                 : page === 'anime'

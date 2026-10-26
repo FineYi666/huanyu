@@ -27,7 +27,7 @@ execFileSync(process.execPath, [path.join(root, 'package-portable.mjs')], {
   stdio: 'inherit',
   windowsHide: true,
 })
-for (const file of ['幻屿.exe', 'resources/app.asar', 'dist/index.html', 'server.mjs', 'games.mjs', 'app-data.mjs', 'runtime/node.exe', 'runtime/ffmpeg.exe', 'runtime/ffprobe.exe']) {
+for (const file of ['幻屿.exe', 'resources/app.asar', 'dist/index.html', 'server.mjs', 'games.mjs', 'app-data.mjs', 'game-resources.mjs', 'movie-catalog.mjs', 'movie-filters.mjs', 'movie-seed.json', 'web-sources.mjs', 'runtime/node.exe', 'runtime/ffmpeg.exe', 'runtime/ffprobe.exe']) {
   await stat(path.join(staging, file))
 }
 createRequire(path.join(staging, 'server.mjs')).resolve('mp4box')
