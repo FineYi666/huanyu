@@ -1,5 +1,5 @@
 import path from 'node:path'
-import { readFile, writeFile, rename } from 'node:fs/promises'
+import { readFile, writeFile, rename, mkdir, readdir } from 'node:fs/promises'
 import { downloadPoster } from './metadata.mjs'
 
 // Brief Chinese summaries adapted from the linked subject's public synopsis.
@@ -278,6 +278,14 @@ export async function createSeasonalService({
     pending,
     lastAttempt = 0,
     lastError = ''
+  const subjects = new Map()
+  function remember(items = []) {
+    for (const item of items) {
+      if (!/^seasonal-\d{1,12}$/.test(item?.id || '')) continue
+      subjects.set(item.id, item)
+    }
+    return items
+  }
   for (const file of [
     path.join(data, 'recommendations.json'),
     path.join(root, 'seasonal.json'),
@@ -289,6 +297,7 @@ export async function createSeasonalService({
         Array.isArray(value.slides)
       ) {
         cached = value
+        remember(value.items || value.slides)
         break
       }
     } catch {}
@@ -310,6 +319,7 @@ export async function createSeasonalService({
         path.join(data, 'recommendations.json'),
       )
       cached = value
+      remember(value.items || value.slides)
       lastError = ''
     } catch {
       lastError = '暂时无法连接新番资料源，请稍后重试'
@@ -329,11 +339,15 @@ export async function createSeasonalService({
     const file = path.join(archiveDir, `${season.id}.json`)
     try {
       const value = JSON.parse(await readFile(file, 'utf8'))
-      if (value?.season?.id === season.id && value.items?.length)
+      if (value?.season?.id === season.id && Array.isArray(value.items) && value.items.length) {
+        remember(value.items)
         return { ...value, season, slides: seasonalBanner(value, season) }
+      }
     } catch {}
     const value = await fetchSeasonal({ season, fetcher, now: now() })
+    remember(value.items)
     try {
+      await mkdir(archiveDir, { recursive: true })
       await writeFile(
         path.join(archiveDir, `${season.id}.tmp`),
         JSON.stringify(value, null, 2),
@@ -388,10 +402,38 @@ export async function createSeasonalService({
     )
     const season = seasonAt(now())
     return {
-      results: (response.data || [])
+      results: remember((response.data || [])
         .filter((item) => ['TV', 'WEB'].includes(item.platform) && !item.nsfw)
-        .map((item) => mapCatalogItem(item, season)),
+        .map((item) => mapCatalogItem(item, season))),
     }
+  }
+  // Imports must resolve trusted works across viewed quarters and search results,
+  // rather than treating membership of the current banner as import permission.
+  async function findSubject(id) {
+    const match = /^seasonal-(\d{1,12})$/.exec(typeof id === 'string' ? id : '')
+    if (!match) return undefined
+    if (subjects.has(id)) return subjects.get(id)
+    let files = []
+    try { files = await readdir(archiveDir) } catch {}
+    for (const file of files.filter((name) => /^\d{4}-Q[1-4]\.json$/.test(name))) {
+      try {
+        const value = JSON.parse(await readFile(path.join(archiveDir, file), 'utf8'))
+        if (`${value.season?.id}.json` !== file || !Array.isArray(value.items)) continue
+        remember(value.items)
+        if (subjects.has(id)) return subjects.get(id)
+      } catch {}
+    }
+    let item
+    try {
+      item = await bangumiRequest(fetcher)(`https://api.bgm.tv/v0/subjects/${match[1]}`)
+    } catch {
+      throw Object.assign(new Error('暂时无法读取这部作品的资料，请稍后重试'), { status: 502 })
+    }
+    if (String(item.id) !== match[1] || item.type !== 2 || item.nsfw ||
+        !['TV', 'WEB'].includes(item.platform) || !(item.name_cn || item.name)) return undefined
+    const subject = mapCatalogItem(item, seasonAt(now()))
+    remember([subject])
+    return subject
   }
   return {
     get(catalog = false) {
@@ -421,5 +463,6 @@ export async function createSeasonalService({
     view,
     seasons,
     search,
+    findSubject,
   }
 }

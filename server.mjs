@@ -456,9 +456,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/resources/search' && req.method === 'POST') {
       const input = await body(req)
-      const subject = recommendations
-        .get(true)
-        .items?.find((item) => item.id === input.subjectId)
+      const subject = await recommendations.findSubject(input.subjectId).catch(() => undefined)
       const useAliases =
         subject &&
         [subject.title, subject.subtitle].includes(input.query?.trim())
@@ -516,11 +514,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/import/local' && req.method === 'POST') {
       const input = await body(req)
-      const subject = recommendations
-        .get(true)
-        .items?.find((item) => item.id === input.subjectId)
+      const subject = await recommendations.findSubject(input.subjectId)
       if (input.subjectId && !subject)
-        return json(res, { error: '这部新番已不在当前片单，请刷新后重试' }, 400)
+        return json(res, { error: '无法识别这部作品的资料，请重新打开作品后重试' }, 400)
       if (subject && input.splitByFolder)
         return json(res, { error: '关联单部新番时请选择该作品的文件夹' }, 400)
       const paths = Array.isArray(input.paths) ? input.paths : []
@@ -622,11 +618,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/import/quark' && req.method === 'POST') {
       const input = await body(req)
-      const subject = recommendations
-        .get(true)
-        .items?.find((item) => item.id === input.subjectId)
+      const subject = await recommendations.findSubject(input.subjectId)
       if (input.subjectId && !subject)
-        return json(res, { error: '这部新番已不在当前片单，请刷新后重试' }, 400)
+        return json(res, { error: '无法识别这部作品的资料，请重新打开作品后重试' }, 400)
       const media = await quark.importShare(
         input.url,
         input.code || '',
