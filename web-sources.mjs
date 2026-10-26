@@ -93,12 +93,53 @@ export function createWebSources({ fetcher = fetch, now = Date.now } = {}) {
       .filter((entry) => entry.status === 'fulfilled')
       .flatMap((entry) => entry.value)
       .filter((item) => item.title && item.episodes.length)
-    const value = { results, searchedAt: new Date(now()).toISOString() }
+    let value = { results, searchedAt: new Date(now()).toISOString() }
     if (results.length) {
+      // 并发探测直链有效性，剔除已失效的链接（磁力保留）。
+      try {
+        value.results = await verifyLinks(value.results)
+      } catch {}
+      value = { ...value, searchedAt: new Date(now()).toISOString() }
       if (cache.size >= 60) cache.delete(cache.keys().next().value)
       cache.set(key, { at: now(), value })
     }
     return value
+  }
+
+  // 链接有效性探测：并发请求每个直链（GET + Range 不拉正文），
+  // 4xx 视为失效剔除；磁力链接无法探测，原样保留。未知状态也保留。
+  async function verifyLinks(results) {
+    const checks = []
+    for (const item of results)
+      for (const link of item.links)
+        if (!link.url.startsWith('magnet:'))
+          checks.push({ item, link })
+    const verdict = new Map()
+    let index = 0
+    const worker = async () => {
+      while (index < checks.length) {
+        const entry = checks[index++]
+        let status = 0
+        try {
+          const response = await fetcher(entry.link.url, {
+            method: 'GET',
+            redirect: 'follow',
+            signal: AbortSignal.timeout(6000),
+            headers: { 'User-Agent': UA, Range: 'bytes=0-0' },
+          })
+          status = response.status
+          await response.body?.cancel().catch(() => {})
+        } catch {}
+        verdict.set(entry.link.url, status === 0 ? null : status < 400 || status === 405)
+      }
+    }
+    await Promise.all(Array.from({ length: 6 }, worker))
+    for (const item of results)
+      item.links = item.links.filter(
+        (link) =>
+          link.url.startsWith('magnet:') || verdict.get(link.url) !== false,
+      )
+    return results.filter((item) => item.links.length)
   }
 
   // 换源：同标题跨采集站再搜一轮，返回其它源的片单。

@@ -2053,6 +2053,14 @@ export default function App() {
                             : '每一次暂停，都是下一次相遇的起点。'}
               </p>
             </div>
+            {page === 'games' ? (
+              <button
+                className="button primary import-main"
+                onClick={() => setGameImporting(true)}
+              >
+                <Plus size={18} /> 导入游戏
+              </button>
+            ) : (
             <div className="import-menu-wrap">
               <button
                 className="button primary import-main"
@@ -2112,6 +2120,7 @@ export default function App() {
                 </>
               )}
             </div>
+            )}
           </div>
           {page === 'home' && (
             <NewSeasonPage
@@ -2127,12 +2136,17 @@ export default function App() {
           )}
           {page === 'games' && (
             <section className="library-section games-section">
-              <div className="library-heading">
-                <div className="section-title">
-                  <h2>{query ? '搜索结果' : pageNames[page]}</h2>
-                  <span className="count-label">
-                    {visibleGames.length} 款游戏
-                  </span>
+              <div className="filter-bar games-filter-bar">
+                <div className="genre-tabs">
+                  {gameGenreTabs.map((item) => (
+                    <button
+                      className={genre === item ? 'active' : ''}
+                      key={item}
+                      onClick={() => setGenre(item)}
+                    >
+                      {item}
+                    </button>
+                  ))}
                 </div>
                 <div className="view-controls">
                   <label className="sort-select">
@@ -2148,30 +2162,11 @@ export default function App() {
                     </select>
                     <ChevronDown size={13} />
                   </label>
-                  <span className="controls-divider" />
-                  <button
-                    className="button primary"
-                    onClick={() => setGameImporting(true)}
-                  >
-                    <Plus size={17} /> 导入游戏
-                  </button>
+                  <span className="count-label">
+                    {visibleGames.length} 款游戏
+                  </span>
                 </div>
               </div>
-              {gameGenreTabs.length > 2 && (
-                <div className="filter-bar">
-                  <div className="genre-tabs">
-                    {gameGenreTabs.map((item) => (
-                      <button
-                        className={genre === item ? 'active' : ''}
-                        key={item}
-                        onClick={() => setGenre(item)}
-                      >
-                        {item}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
               <GameResourceSearch notify={notify} />
               {!state ? (
                 <div className="empty-state">
