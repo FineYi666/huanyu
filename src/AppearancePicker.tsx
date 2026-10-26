@@ -100,7 +100,7 @@ export default function AppearancePicker({
   busy,
 }: {
   settings: AppSettings
-  onChange: (patch: AppearancePatch) => void
+  onChange: (patch: AppearancePatch) => void | Promise<void>
   onClose: () => void
   busy: boolean
 }) {
@@ -135,7 +135,7 @@ export default function AppearancePicker({
       const dataUrl = canvas.toDataURL('image/jpeg', 0.86)
       URL.revokeObjectURL(objectUrl)
       await api<{ url: string }>('/skin-background', { image: dataUrl })
-      onChange({
+      await onChange({
         skin: 'custom',
         theme: palette.dark ? 'dark' : 'light',
         customAccent: palette.accent,
@@ -228,11 +228,12 @@ export default function AppearancePicker({
                         : skin.id === 'grove' ? '/artwork/skins/grove-pearl-dunes.jpg'
                         : skin.id === 'lunar' ? '/artwork/skins/lunar-jade-ink.jpg'
                         : skin.id === 'aurora' ? '/artwork/skins/aurora-bluegold-nebula.jpg'
-                        : skin.id === 'custom' ? '/skin-background'
+                        : skin.id === 'custom' ? `/skin-background?v=${encodeURIComponent(settings.customBackgroundVersion || '')}`
                     : '/artwork/hero-howls.jpg'
                     }
                     alt=""
                     loading="lazy"
+                    onLoad={(event) => { event.currentTarget.style.opacity = '1' }}
                     onError={(event) => {
                       event.currentTarget.style.opacity = '0'
                     }}

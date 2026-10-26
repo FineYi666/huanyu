@@ -38,6 +38,11 @@ export function normalizeSettings(input = {}) {
         : '#1a2230',
     customDark:
       typeof input.customDark === 'boolean' ? input.customDark : true,
+    customBackgroundVersion:
+      typeof input.customBackgroundVersion === 'string' &&
+      /^[a-zA-Z0-9-]{1,80}$/.test(input.customBackgroundVersion)
+        ? input.customBackgroundVersion
+        : '',
     deepseekModel:
       typeof input.deepseekModel === 'string' &&
       /^[\w.:-]{1,100}$/.test(input.deepseekModel)

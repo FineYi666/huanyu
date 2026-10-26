@@ -151,7 +151,7 @@ html[data-skin='aurora'][data-theme='light'] {
 }
 /* 自定义幻境：用户导入图片 + 自动取色。 */
 html[data-skin='custom'] {
-  --scene-image: url('/skin-background');
+  --scene-image: var(--custom-background-image, url('/skin-background'));
   --bg: var(--custom-bg, #10141c);
   --surface: var(--custom-surface, #171d29);
   --subtle: var(--custom-subtle, #1e2634);
@@ -359,7 +359,7 @@ html[data-skin='aurora'] .player-dialog { box-shadow: 0 0 0 1px #2a8fe033,0 30px
 .skin-preview[data-preview-skin='grove'] { background: linear-gradient(#f7f5efc2,#f7f5efb3),url('/artwork/skins/grove-pearl-dunes.jpg') center / cover; }
 .skin-preview[data-preview-skin='lunar'] { background: linear-gradient(#0b1a10aa,#0b1a10bb),url('/artwork/skins/lunar-jade-ink.jpg') center / cover; }
 .skin-preview[data-preview-skin='aurora'] { background: linear-gradient(#0a1428aa,#0a1428bb),url('/artwork/skins/aurora-bluegold-nebula.jpg') center / cover; }
-.skin-preview[data-preview-skin='custom'] { background: linear-gradient(#10141caa,#10141cbb),url('/skin-background') center / cover; }
+.skin-preview[data-preview-skin='custom'] { background: linear-gradient(#10141caa,#10141cbb),var(--custom-background-image, url('/skin-background')) center / cover; }
 /* Constant, slow ambient motion only; UI labels and controls remain stationary. */
 .scene-weather { position: absolute; inset: 0; overflow: hidden; pointer-events: none; contain: paint; }
 .scene-weather-synth { opacity: .7; }

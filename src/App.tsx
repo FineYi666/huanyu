@@ -1586,6 +1586,11 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
+  useEffect(() => {
+    const version = state?.settings.customBackgroundVersion
+    const url = version ? `/skin-background?v=${encodeURIComponent(version)}` : '/skin-background'
+    document.documentElement.style.setProperty('--custom-background-image', `url("${url}")`)
+  }, [state?.settings.customBackgroundVersion])
   // 自定义皮肤：从图片主色派生整套染色变量（背景/面板/边框随图变色）。
   useEffect(() => {
     const rootElement = document.documentElement

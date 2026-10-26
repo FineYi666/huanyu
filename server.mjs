@@ -450,7 +450,10 @@ const server = http.createServer(async (req, res) => {
       for (const stale of ['skin-background.jpg', 'skin-background.png', 'skin-background.webp'])
         if (stale !== `skin-background.${extension}`)
           await unlink(path.join(DATA, stale)).catch(() => {})
-      return json(res, { ok: true, url: `/skin-background?v=${Date.now()}` })
+      const version = randomUUID()
+      state.settings.customBackgroundVersion = version
+      await save()
+      return json(res, { ok: true, version, url: `/skin-background?v=${version}` })
     }
     if (route === '/api/movie-seed' && req.method === 'GET') {
       return json(res, movieCatalog.get({ query: url.searchParams.get('q') || '', genre: url.searchParams.get('genre') || '全部', sort: url.searchParams.get('sort') || 'rank' }))

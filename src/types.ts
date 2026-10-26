@@ -99,6 +99,7 @@ export interface AppSettings {
   customAccent: string
   customBase: string
   customDark: boolean
+  customBackgroundVersion: string
 }
 export interface AppState {
   media: Media[]

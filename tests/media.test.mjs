@@ -151,6 +151,7 @@ test('local library lifecycle, playback ranges, natural episode order, persisten
   assert.equal(initialState.settings.skin, 'grove')
   assert.equal(initialState.settings.glass, true)
   assert.equal(initialState.settings.ambientMotion, true)
+  assert.equal(initialState.settings.customBackgroundVersion, '')
   assert.equal(initialState.settings.deepseekConnected, false)
   assert.equal(initialState.settings.deepseekAuto, true)
   assert.equal((await call('/metadata/enrich', { all: true })).status, 401)
@@ -186,6 +187,22 @@ test('local library lifecycle, playback ranges, natural episode order, persisten
   assert.equal(invalidAppearance.settings.ambientMotion, false)
   assert.equal(invalidAppearance.settings.glass, false)
   assert.equal(invalidAppearance.settings.theme, 'light')
+  // Replacing the same custom skin must provide a new image URL without restarting.
+  let previousBackgroundVersion = ''
+  for (const content of ['first-background', 'second-background']) {
+    const image = Buffer.from(content)
+    const upload = await (await call('/skin-background', { image: `data:image/png;base64,${image.toString('base64')}` })).json()
+    assert.ok(upload.version)
+    assert.notEqual(upload.version, previousBackgroundVersion)
+    const applied = await (await call('/settings', { skin: 'custom' })).json()
+    assert.equal(applied.settings.customBackgroundVersion, upload.version)
+    const response = await fetch(origin + upload.url)
+    assert.equal(response.headers.get('content-type'), 'image/png')
+    assert.deepEqual(Buffer.from(await response.arrayBuffer()), image)
+    const saved = JSON.parse(await readFile(path.join(dataDir, 'library.json'), 'utf8'))
+    assert.equal(saved.settings.customBackgroundVersion, upload.version)
+    previousBackgroundVersion = upload.version
+  }
   assert.equal(
     (await (await call('/settings', { glass: true })).json()).settings.glass,
     true,
