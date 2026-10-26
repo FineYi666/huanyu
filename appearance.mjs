@@ -23,6 +23,8 @@ export function normalizeSettings(input = {}) {
     ambientMotion: typeof input.ambientMotion === 'boolean' ? input.ambientMotion : true,
     deepseekAuto:
       typeof input.deepseekAuto === 'boolean' ? input.deepseekAuto : true,
+    closeAsk: typeof input.closeAsk === 'boolean' ? input.closeAsk : true,
+    closeAction: input.closeAction === 'exit' ? 'exit' : 'tray',
     deepseekModel:
       typeof input.deepseekModel === 'string' &&
       /^[\w.:-]{1,100}$/.test(input.deepseekModel)

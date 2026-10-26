@@ -689,8 +689,9 @@ const server = http.createServer(async (req, res) => {
     }
     if (route === '/api/settings' && req.method === 'POST') {
       const input = await body(req)
-      for (const key of ['showSamples', 'autoNext', 'glass', 'ambientMotion', 'deepseekAuto', 'subtitlesEnabled'])
+      for (const key of ['showSamples', 'autoNext', 'glass', 'ambientMotion', 'deepseekAuto', 'subtitlesEnabled', 'closeAsk'])
         if (typeof input[key] === 'boolean') state.settings[key] = input[key]
+      if (['tray', 'exit'].includes(input.closeAction)) state.settings.closeAction = input.closeAction
       if (['light', 'dark'].includes(input.theme))
         state.settings.theme = input.theme
       if (SKIN_IDS.includes(input.skin)) state.settings.skin = input.skin

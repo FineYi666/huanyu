@@ -9,6 +9,10 @@ declare global {
       close: () => Promise<void>
       isMaximized: () => Promise<boolean>
       onMaximizeChange: (callback: (value: boolean) => void) => void
+      hide: () => Promise<void>
+      quit: () => Promise<void>
+      setCloseBehavior: (prefs: { ask: boolean; action: 'tray' | 'exit' }) => void
+      onCloseAsk: (callback: () => void) => () => void
     }
   }
 }
@@ -89,6 +93,8 @@ export interface AppSettings {
   deepseekModels: string[]
   deepseekConnected: boolean
   deepseekStorageError: string
+  closeAsk: boolean
+  closeAction: 'tray' | 'exit'
 }
 export interface AppState {
   media: Media[]

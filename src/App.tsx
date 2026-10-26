@@ -1492,6 +1492,9 @@ export default function App() {
   const [gameImporting, setGameImporting] = useState(false)
   const [selectedGame, setSelectedGame] = useState<string | null>(null)
   const [launchingGame, setLaunchingGame] = useState<string | null>(null)
+  const [closeDialog, setCloseDialog] = useState(false)
+  const [closeChoice, setCloseChoice] = useState<'tray' | 'exit'>('tray')
+  const [closeNoMore, setCloseNoMore] = useState(false)
 
   const search = useRef<HTMLInputElement>(null)
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
@@ -1579,6 +1582,54 @@ export default function App() {
     void desktop.isMaximized().then(setIsMaximized).catch(() => {})
     desktop.onMaximizeChange(setIsMaximized)
   }, [])
+  // 关闭行为偏好与设置变更时同步到主进程。
+  useEffect(() => {
+    const desktop = window.yingyuDesktop
+    if (!desktop?.setCloseBehavior) return
+    desktop.setCloseBehavior({
+      ask: state?.settings.closeAsk ?? true,
+      action: state?.settings.closeAction === 'exit' ? 'exit' : 'tray',
+    })
+  }, [
+    state?.settings.closeAsk,
+    state?.settings.closeAction,
+    isDesktop,
+  ])
+  // 主进程请求展示关闭确认弹窗。
+  useEffect(() => {
+    const desktop = window.yingyuDesktop
+    if (!desktop?.onCloseAsk) return
+    return desktop.onCloseAsk(() => {
+      setCloseDialog(true)
+      setCloseChoice(
+        state?.settings.closeAction === 'exit' ? 'exit' : 'tray',
+      )
+    })
+  }, [state?.settings.closeAction, state?.settings.skin])
+  async function confirmClose() {
+    setCloseDialog(false)
+    const desktop = window.yingyuDesktop
+    if (!desktop) return
+    if (closeNoMore) {
+      try {
+        const value = await api<AppState>('/settings', {
+          closeAsk: false,
+          closeAction: closeChoice,
+        })
+        setState(value)
+        desktop.setCloseBehavior({
+          ask: false,
+          action: closeChoice,
+        })
+      } catch {}
+    }
+    if (closeChoice === 'tray') {
+      notify('幻屿已最小化到任务栏托盘，双击托盘图标可找回')
+      void desktop.hide()
+    } else {
+      void desktop.quit()
+    }
+  }
   useEffect(() => {
     const syncMotion = () => { document.documentElement.dataset.ambientMotion = String((state?.settings.ambientMotion ?? true) && !document.hidden && !playing) }
     syncMotion()
@@ -2548,6 +2599,53 @@ export default function App() {
             onClose={() => setAppearance(false)}
             busy={appearanceBusy}
           />
+        </Dialog>
+      )}
+      {closeDialog && (
+        <Dialog
+          title="点击主界面关闭按钮时"
+          onClose={() => setCloseDialog(false)}
+          className="close-confirm-dialog"
+        >
+          <div className="close-confirm-body">
+            <div className="close-confirm-options">
+              <label className="close-confirm-option">
+                <input
+                  type="radio"
+                  name="close-choice"
+                  checked={closeChoice === 'tray'}
+                  onChange={() => setCloseChoice('tray')}
+                />
+                最小化到任务栏托盘
+              </label>
+              <label className="close-confirm-option">
+                <input
+                  type="radio"
+                  name="close-choice"
+                  checked={closeChoice === 'exit'}
+                  onChange={() => setCloseChoice('exit')}
+                />
+                退出幻屿
+              </label>
+            </div>
+            <div className="close-confirm-divider" />
+            <div className="close-confirm-footer">
+              <label className="close-confirm-nomore">
+                <input
+                  type="checkbox"
+                  checked={closeNoMore}
+                  onChange={(e) => setCloseNoMore(e.target.checked)}
+                />
+                不再提示
+              </label>
+              <button
+                className="button primary"
+                onClick={() => void confirmClose()}
+              >
+                确定
+              </button>
+            </div>
+          </div>
         </Dialog>
       )}
     </div>

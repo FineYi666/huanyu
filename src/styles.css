@@ -3634,3 +3634,53 @@ html[data-desktop='true'] .app-shell .topbar .search-box input {
 html[data-platform='darwin'] .app-shell .topbar {
   padding-left: 84px;
 }
+
+/* ---------- 关闭确认弹窗 ---------- */
+.close-confirm-body {
+  text-align: center;
+  padding: 10px 6px 4px;
+}
+.close-confirm-options {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin: 20px 0 24px;
+  flex-wrap: wrap;
+}
+.close-confirm-option {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 14.5px;
+  color: var(--text);
+  cursor: pointer;
+}
+.close-confirm-option input,
+.close-confirm-nomore input {
+  accent-color: var(--green);
+  width: 16px;
+  height: 16px;
+  cursor: pointer;
+}
+.close-confirm-divider {
+  border-top: 1px solid var(--border);
+  margin: 2px 0 16px;
+}
+.close-confirm-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.close-confirm-nomore {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--secondary);
+  cursor: pointer;
+}
+.close-confirm-dialog .button.primary {
+  padding-left: 34px;
+  padding-right: 34px;
+}

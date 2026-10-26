@@ -6,6 +6,8 @@ const {
   session,
   dialog,
   ipcMain,
+  Tray,
+  nativeImage,
 } = require('electron')
 const path = require('node:path')
 const { execFile } = require('node:child_process')
@@ -17,6 +19,9 @@ const { allowFullscreen } = require('./permissions.cjs')
 app.setName('幻屿')
 app.setAppUserModelId('cn.yingyu.cinema')
 let window
+let tray
+let quitting = false
+const closePrefs = { ask: true, action: 'tray' }
 const isMac = process.platform === 'darwin'
 const root = app.isPackaged
   ? path.dirname(process.execPath)
@@ -104,6 +109,64 @@ else {
         return window.isMaximized()
       })
       ipcMain.handle('window:close', () => window?.close())
+      ipcMain.handle('window:hide', () => window?.hide())
+      ipcMain.handle('app:quit', () => {
+        quitting = true
+        app.quit()
+      })
+      ipcMain.on('close-behavior:set', (_event, prefs) => {
+        closePrefs.ask = prefs?.ask !== false
+        closePrefs.action = prefs?.action === 'exit' ? 'exit' : 'tray'
+      })
+      // 用户点窗口 ×：按设置询问、最小化到托盘或直接退出。
+      window.on('close', (event) => {
+        if (quitting || isMac) return
+        if (closePrefs.ask) {
+          event.preventDefault()
+          window.show()
+          window.webContents.send('close:ask')
+          return
+        }
+        if (closePrefs.action === 'tray') {
+          event.preventDefault()
+          window.hide()
+        }
+      })
+      app.on('before-quit', () => {
+        quitting = true
+      })
+      // 任务栏托盘：最小化到托盘后从这里找回窗口或退出。
+      const trayImage = nativeImage.createFromPath(
+        path.join(root, 'dist', 'yingyu-192.png'),
+      )
+      tray = new Tray(trayImage.isEmpty() ? path.join(root, 'dist', 'yingyu.ico') : trayImage)
+      tray.setToolTip('幻屿')
+      tray.setContextMenu(
+        Menu.buildFromTemplate([
+          {
+            label: '打开幻屿',
+            click: () => {
+              if (window) {
+                window.show()
+                window.focus()
+              }
+            },
+          },
+          {
+            label: '退出',
+            click: () => {
+              quitting = true
+              app.quit()
+            },
+          },
+        ]),
+      )
+      tray.on('click', () => {
+        if (window) {
+          window.show()
+          window.focus()
+        }
+      })
       ipcMain.handle('window:isMaximized', () => Boolean(window?.isMaximized()))
       const sendMaximized = () =>
         window?.webContents.send('window:maximized', window.isMaximized())
