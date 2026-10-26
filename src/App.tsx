@@ -54,6 +54,7 @@ import Dialog, { IconButton } from './ui'
 import GamesPage, {
   GameDetailDialog,
   GameImportDialog,
+  GameResourceSearch,
 } from './games'
 import type { AppState, Episode, Game, Media } from './types'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
@@ -2171,6 +2172,7 @@ export default function App() {
                   </div>
                 </div>
               )}
+              <GameResourceSearch notify={notify} />
               {!state ? (
                 <div className="empty-state">
                   {loadError ? (
@@ -2196,6 +2198,7 @@ export default function App() {
                   onOpen={setSelectedGame}
                   onLaunch={launchGame}
                   onFavorite={favoriteGame}
+                  notify={notify}
                 />
               ) : (
                 <div className="empty-state">
@@ -2521,6 +2524,7 @@ export default function App() {
                     onOpen={setSelectedGame}
                     onLaunch={launchGame}
                     onFavorite={favoriteGame}
+                    notify={notify}
                   />
                 </section>
               )}
