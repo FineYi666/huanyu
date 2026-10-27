@@ -13,12 +13,13 @@ import {
   History,
 } from 'lucide-react'
 import { api } from './api'
-import StreamVideo from './StreamVideo'
+import OnlinePlayer,{type WebSourceResult,type WebEpisode} from './OnlinePlayer'
 import Dialog from './ui'
 import HeroCarousel from './HeroCarousel'
 import Poster from './Poster'
 import type { SkinId } from './skins'
 import type { AppState, Media } from './types'
+import { episodeLabel } from './episode-labels'
 
 export type SeasonTitle = {
   category?: 'anime' | 'movie'
@@ -34,15 +35,6 @@ export type SeasonTitle = {
   sourceUrl?: string
   platform?: string
   status?: string
-}
-type WebSourceResult = {
-  id: string
-  sourceName: string
-  title: string
-  cover: string
-  year: string
-  remarks: string
-  episodes: { title: string; url: string }[]
 }
 type Catalog = {
   season: { id: string; label: string; monthLabel?: string }
@@ -236,7 +228,7 @@ export default function NewSeasonPage({
           <div className="shelf-heading"><History size={16} /><h2>继续观看</h2><span>{recent.length ? `${recent.length} 部` : 'YOUR CINEMA'}</span></div>
           {recent.length ? recent.map(({ media: m, episode, progress }) => <button className="continue-item" key={m.id} onClick={() => onOpen(m.id)}>
             <Poster src={m.cover} title={m.title} />
-            <span className="continue-copy"><strong>{m.title}</strong><small>{episode ? `第 ${m.episodes.indexOf(episode) + 1} 集` : '上次观看'} · {Math.floor(progress.time / 60)} 分钟</small><span className="continue-progress"><i style={{ width: `${Math.min(100, progress.duration ? progress.time / progress.duration * 100 : 0)}%` }} /></span></span><Play size={13} />
+            <span className="continue-copy"><strong>{m.title}</strong><small>{episode ? episodeLabel(m.episodes.indexOf(episode),m.episodes,m.title) : '上次观看'} · {Math.floor(progress.time / 60)} 分钟</small><span className="continue-progress"><i style={{ width: `${Math.min(100, progress.duration ? progress.time / progress.duration * 100 : 0)}%` }} /></span></span><Play size={13} />
           </button>) : <div className="shelf-empty"><Play size={23} strokeWidth={1.3} /><p>把暂停的故事，留给下次相遇。</p><small>导入并播放后，这里会记住你的进度。</small></div>}
           <div className="shelf-heading shelf-picks"><Star size={15} /><h2>本季口碑</h2><span>精选</span></div>
           {highlights.map((item, index) => <button className="shelf-pick" key={item.id} onClick={() => onResource(item)}><span className="pick-rank">0{index + 1}</span><Poster src={item.image} title={item.title} /><span><strong>{item.title}</strong><small><Star size={10} fill="currentColor" /> {item.score?.toFixed(1)} <i>Bangumi</i></small></span><ArrowUpRight size={14} /></button>)}
@@ -500,38 +492,24 @@ export function ResourceSearch({
   const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [webOpen, setWebOpen] = useState<string | null>(null)
-  const [webEpisodes, setWebEpisodes] = useState<{ title: string; url: string }[]>([])
-  const [webPlaying, setWebPlaying] = useState<{ title: string; stream: string; format: string } | null>(null)
+  const [webPlaying, setWebPlaying] = useState<{result:WebSourceResult;episode:WebEpisode}|null>(null)
   const [webError, setWebError] = useState('')
+  const webRevision=useRef(0)
   async function loadWebSources(keyword: string) {
+    const revision=++webRevision.current
     setWebBusy(true)
     setWebError('')
     try {
       const value = await api<{ results: WebSourceResult[] }>(
         '/web-sources/search',
-        { keyword },
+        { keyword, subjectId:subject.id, category:subject.category||'anime' },
       )
+      if(revision!==webRevision.current)return
       setWebSources(value.results || [])
     } catch (e) {
-      setWebError((e as Error).message)
-      setWebSources([])
+      if(revision===webRevision.current){setWebError((e as Error).message);setWebSources([])}
     } finally {
-      setWebBusy(false)
-    }
-  }
-  async function playWebEpisode(episode: { title: string; url: string }, title: string) {
-    setWebError('')
-    try {
-      const value = await api<{ url: string; format: string }>('/web-stream', {
-        url: episode.url,
-      })
-      setWebPlaying({
-        title: `${title} · ${episode.title}`,
-        stream: value.url,
-        format: value.format || 'hls',
-      })
-    } catch (e) {
-      setWebError((e as Error).message)
+      if(revision===webRevision.current)setWebBusy(false)
     }
   }
   async function search(value: string) {
@@ -567,7 +545,7 @@ export function ResourceSearch({
   }
   useEffect(() => {
     void search(subject.title)
-    return () => abort.current?.abort()
+    return () => {abort.current?.abort();webRevision.current++}
   }, [subject.id, subject.title])
   async function importResource(resource: Resource) {
     setImporting(resource.id)
@@ -636,7 +614,7 @@ export function ResourceSearch({
           minLength={2}
           required
         />
-        <button className="button primary" disabled={loading || !!importing}>
+        <button className="button primary" disabled={!!importing}>
           {loading ? (
             <LoaderCircle size={15} className="spin" />
           ) : (
@@ -754,8 +732,8 @@ export function ResourceSearch({
       ) : null}
       <div className="web-sources-block">
         <div className="web-sources-head">
-          <strong>在线片源 · 立即播放</strong>
-          <span>聚合公开资源站的在线视频，点击集数直接播放</span>
+          <strong>在线片源 · 已校验入口</strong>
+          <span>核对片名、季度与类型；已检查推荐入口，其他集播放前再次校验</span>
         </div>
         {webBusy ? (
           <div className="season-empty">
@@ -779,7 +757,7 @@ export function ResourceSearch({
                 <div className="web-source-copy">
                   <h4>{item.title}</h4>
                   <span>
-                    {item.sourceName}
+                    {item.sourceName} · {item.road}
                     {item.year ? ` · ${item.year}` : ''}
                     {item.remarks ? ` · ${item.remarks}` : ''} ·{' '}
                     {item.episodes.length} 集
@@ -788,10 +766,10 @@ export function ResourceSearch({
                     {webOpen === item.id ? (
                       item.episodes.map((episode) => (
                         <button
-                          key={episode.url}
+                          key={episode.id}
                           type="button"
                           onClick={() =>
-                            void playWebEpisode(episode, item.title)
+                            setWebPlaying({result:item,episode})
                           }
                         >
                           {episode.title}
@@ -802,7 +780,6 @@ export function ResourceSearch({
                         type="button"
                         onClick={() => {
                           setWebOpen(item.id)
-                          setWebEpisodes(item.episodes)
                         }}
                       >
                         展开 {item.episodes.length} 集
@@ -815,30 +792,11 @@ export function ResourceSearch({
           </div>
         ) : webSources ? (
           <p className="web-sources-error">
-            各资源站暂未收录这部作品，可尝试其它关键词。
+            暂无名称、季度与播放校验均通过的在线片源，可尝试其他关键词或导入夸克分享。
           </p>
         ) : null}
       </div>
-      {webPlaying && (
-        <Dialog
-          title={webPlaying.title}
-          onClose={() => setWebPlaying(null)}
-          className="web-player-dialog"
-        >
-          <div className="web-player-body">
-            <StreamVideo
-              src={webPlaying.stream}
-              format={webPlaying.format}
-              onStreamError={(message) => setWebError(message)}
-              autoPlay
-              controls
-            />
-          </div>
-          <p className="web-player-note">
-            在线片源来自公开资源站，稳定性视站点而定；可关闭后选择其它集数或来源。
-          </p>
-        </Dialog>
-      )}
+      {webPlaying&&<OnlinePlayer initialResult={webPlaying.result} initialEpisode={webPlaying.episode} results={webSources||[]} onClose={()=>setWebPlaying(null)} onInvalid={(resultId,episodeId)=>setWebSources(items=>items?.map(item=>item.id===resultId?{...item,episodes:item.episodes.filter(episode=>episode.id!==episodeId)}:item).filter(item=>item.episodes.length)||[])} />}
       <div className="resource-fallback-actions">
         <button
           className="button outline"

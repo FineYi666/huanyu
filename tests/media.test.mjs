@@ -56,7 +56,7 @@ test('Quark share parsing handles pasted prose, encoded codes and rejects unrela
 test('local library lifecycle, playback ranges, natural episode order, persistence and cross-site protection', async (t) => {
   const root = path.dirname(path.dirname(fileURLToPath(import.meta.url)))
   const temp = await mkdtemp(path.join(os.tmpdir(), 'yingyu-test-'))
-  const videoFolder = path.join(temp, '测试剧集')
+  const videoFolder = path.join(temp, '测试剧集 第二季')
   await mkdir(videoFolder)
   const bytes = Buffer.from(Array.from({ length: 512 }, (_, i) => i % 256))
   for (const name of ['Episode 10.mp4', 'Episode 2.mp4', 'Episode 1.mp4'])
@@ -215,6 +215,9 @@ test('local library lifecycle, playback ranges, natural episode order, persisten
   const imported = await importResponse.json()
   assert.equal(imported.count, 3)
   const media = imported.media.find((m) => m.source === 'local')
+  assert.equal(media.episodes[0].season, 2, 'infer season on the server before stripping private file paths')
+  assert.equal(media.episodes[0].episodeNumber, 1)
+  assert.equal(media.episodes[0].path, undefined)
   assert.deepEqual(
     media.episodes.map((e) => e.name),
     ['Episode 1.mp4', 'Episode 2.mp4', 'Episode 10.mp4'],

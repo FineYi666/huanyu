@@ -1,0 +1,612 @@
+/* Shared cinema surface for local files, Quark and verified online sources. */
+.cinema-video {
+  position: relative;
+  isolation: isolate;
+  width: 100%;
+  height: 100%;
+  min-height: 260px;
+  background: #080b10;
+  color: #f2f5f9;
+  overflow: hidden;
+  outline: none;
+  font-family: inherit;
+}
+.cinema-video video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  background: #080b10;
+}
+.cinema-video:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+}
+.cinema-video.hide-hud {
+  cursor: none;
+}
+.cinema-hud {
+  position: absolute;
+  z-index: 3;
+  left: 0;
+  right: 0;
+  transition: opacity 0.18s ease;
+  opacity: 1;
+}
+.cinema-video.hide-hud .cinema-hud {
+  opacity: 0;
+  pointer-events: none;
+}
+.cinema-video:focus-within .cinema-hud {
+  opacity: 1;
+  pointer-events: auto;
+}
+.cinema-top {
+  top: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 20px 22px 45px;
+  background: linear-gradient(#070a10dc, #070a105c, transparent);
+  pointer-events: none;
+}
+.cinema-top > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.cinema-top button {
+  pointer-events: auto;
+}
+.cinema-top strong {
+  font-size: 14px;
+  font-weight: 550;
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cinema-top span {
+  display: block;
+  font-size: 11px;
+  margin-top: 4px;
+  color: #c0ccdb;
+}
+.cinema-hud button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  color: #eff5fc;
+  border-radius: 8px;
+  background: transparent;
+  border: 0;
+}
+.cinema-hud button:hover {
+  background: #f4f8ff20;
+}
+.cinema-hud button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.cinema-hud button:focus-visible,
+.cinema-hud select:focus-visible,
+.cinema-hud input:focus-visible {
+  outline: 2px solid #a9dae8;
+  outline-offset: 3px;
+}
+.cinema-bottom {
+  bottom: 0;
+  padding: 44px 20px 14px;
+  background: linear-gradient(transparent, #070a10c4 45%, #070a10ef);
+}
+.cinema-seek {
+  width: 100%;
+  height: 4px;
+  display: block;
+  margin: 0 0 14px;
+  cursor: pointer;
+  appearance: none;
+  background: linear-gradient(
+    to right,
+    #9fdae5 var(--played),
+    #8292a44f var(--played)
+  );
+  border-radius: 4px;
+}
+.cinema-seek::-webkit-slider-thumb {
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #b9ebf2;
+  box-shadow: 0 0 12px #8bd5e452;
+}
+.cinema-seek:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.cinema-control-row,
+.cinema-control-row > div {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+.cinema-control-row {
+  justify-content: space-between;
+}
+.cinema-control-row > div {
+  min-width: 0;
+}
+.cinema-time {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  margin: 0 8px 0 5px;
+  color: #f4f7fa;
+}
+.cinema-time i {
+  font-style: normal;
+  color: #91a3b7;
+  margin: 0 4px;
+}
+.cinema-volume {
+  width: 65px;
+  accent-color: #a9dce8;
+  height: 3px;
+}
+.cinema-select {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+  white-space: nowrap;
+}
+.cinema-select > span {
+  font-size: 9px;
+  color: #93a7bf;
+  letter-spacing: 0.4px;
+}
+.cinema-select select {
+  color: #f1f6fb;
+  background: #d4e6ff0f;
+  border: 1px solid #d4e6ff25;
+  border-radius: 8px;
+  padding: 8px 7px;
+  font-size: 11px;
+  max-width: 154px;
+  cursor: pointer;
+}
+.cinema-select option {
+  color: #eef4ff;
+  background: #131d2b;
+}
+.cinema-center-play {
+  position: absolute;
+  z-index: 2;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  padding-left: 4px;
+  border: 1px solid #d4e7ff60;
+  border-radius: 50%;
+  color: #fff;
+  background: #1826388f;
+  backdrop-filter: blur(12px);
+}
+.cinema-buffer {
+  position: absolute;
+  z-index: 2;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  flex-direction: column;
+  gap: 14px;
+  pointer-events: none;
+  background: #05090d32;
+  color: #d5e2ef;
+  font-size: 11px;
+}
+.cinema-buffer i {
+  width: 30px;
+  height: 30px;
+  border: 2px solid #a7d9e42b;
+  border-top-color: #a7d9e4;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+.cinema-notice {
+  position: absolute;
+  z-index: 4;
+  bottom: 104px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 11px 18px;
+  border-radius: 10px;
+  background: #121b29e8;
+  border: 1px solid #bacfe638;
+  color: #e7f0f8;
+  font-size: 12px;
+  max-width: 80%;
+}
+html .online-cinema-dialog {
+  width: min(1420px, 96vw);
+  max-width: 96vw;
+  border: 1px solid #8cb3d54a;
+  border-radius: 18px;
+  background: #111a27;
+  color: #e9f0f7;
+  overflow: auto;
+  max-height: 95dvh;
+}
+html .online-cinema-dialog > .dialog-content,
+html .player-dialog > .dialog-content {
+  padding: 0;
+}
+.cinema-window-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 20px;
+  border-bottom: 1px solid #9cb6d025;
+  background: #101926;
+  color: #e9f1fa;
+  min-height: 64px;
+}
+.cinema-window-header > button {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: #d8e8f8;
+}
+.cinema-window-header > button:hover {
+  background: #b4cfe31a;
+}
+.cinema-window-header > div {
+  min-width: 0;
+}
+.cinema-window-header strong {
+  font-size: 14px;
+  font-weight: 550;
+  display: inline-block;
+  vertical-align: middle;
+}
+.cinema-window-header > div > span {
+  font-size: 11px;
+  color: #93a9bf;
+  margin-left: 12px;
+}
+.cinema-source-badge {
+  margin-left: auto;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  font-size: 10px;
+  color: #a2bdd3;
+  white-space: nowrap;
+}
+.online-cinema-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 238px;
+}
+.online-cinema-main {
+  min-width: 0;
+  background: #0c121b;
+}
+.online-cinema-stage {
+  position: relative;
+  aspect-ratio: 16/9;
+  min-height: 300px;
+}
+.online-cinema-status {
+  position: absolute;
+  z-index: 4;
+  inset: 0;
+  background: #0b121eeb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  flex-direction: column;
+  gap: 14px;
+  padding: 30px;
+  color: #acc2d8;
+}
+.online-cinema-status h3 {
+  font-size: 19px;
+  color: #e2edf7;
+}
+.online-cinema-status p {
+  font-size: 12px;
+  line-height: 1.8;
+  max-width: 460px;
+}
+.online-cinema-status > div {
+  display: flex;
+  gap: 10px;
+}
+.cinema-help {
+  font-size: 10px;
+  color: #728aa2;
+  padding: 14px 20px;
+  line-height: 1.7;
+}
+.online-cinema-sidebar {
+  padding: 20px 16px;
+  background: #142030;
+  border-left: 1px solid #a0bdd424;
+  overflow: auto;
+  max-height: 75dvh;
+}
+.cinema-sidebar-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 0 0 14px;
+}
+.cinema-sidebar-heading h3 {
+  font-size: 13px;
+  color: #dbe6f1;
+  font-weight: 550;
+}
+.cinema-sidebar-heading span {
+  font-size: 10px;
+  color: #819bb5;
+}
+.online-cinema-sidebar > select,
+.season-episode-select {
+  width: 100%;
+  color: #d5e3f0;
+  background: #1c2c40;
+  border: 1px solid #6b89a43b;
+  border-radius: 8px;
+  padding: 10px 8px;
+  font-size: 11px;
+  margin-bottom: 23px;
+}
+.online-cinema-sidebar > p {
+  font-size: 10px;
+  color: #7c96b0;
+  line-height: 1.9;
+  margin-top: 22px;
+}
+.online-cinema-episodes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.online-cinema-episodes button {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 8px;
+  border-radius: 8px;
+  color: #9fb5ca;
+  background: #2031497a;
+  border: 1px solid transparent;
+  font-size: 11px;
+  text-align: left;
+}
+.online-cinema-episodes button > span {
+  font-size: 9px;
+  color: #7893ad;
+  font-variant-numeric: tabular-nums;
+}
+.online-cinema-episodes button.active {
+  background: #295066;
+  border-color: #7db5c46e;
+  color: #d5f5ff;
+}
+.online-cinema-episodes button:hover {
+  border-color: #7db5c446;
+}
+html .app-shell ~ .player-dialog,
+html .player-dialog {
+  background: #111b29;
+  border-color: #91b5cf48;
+  border-radius: 18px;
+}
+html .player-dialog .video-stage {
+  background: #080b10;
+  aspect-ratio: 16/9;
+  min-height: 260px;
+}
+html .player-dialog .video-stage > .cinema-video {
+  position: absolute;
+  inset: 0;
+}
+html .player-dialog .player-main {
+  min-width: 0;
+}
+html .player-dialog .player-layout {
+  gap: 0;
+}
+html .player-dialog .player-toolbar {
+  padding: 14px 20px;
+  border-bottom: 1px solid #89acc62b;
+  color: #c6d7e6;
+  background: #152233;
+}
+html .player-dialog .player-toolbar h3 {
+  font-size: 15px;
+  color: #edf5ff;
+}
+html .player-dialog .playback-options,
+html .player-dialog .player-footnote,
+html .player-dialog .subtitle-appearance,
+html .player-dialog .subtitle-panel,
+html .player-dialog .embedded-subtitle-panel {
+  margin-inline: 18px;
+}
+html .player-dialog .player-episodes {
+  background: #142030;
+  border-left: 1px solid #92b3d42a;
+  padding: 20px 16px;
+  color: #bdd2e5;
+}
+html .player-dialog .player-episodes h3 {
+  color: #dce9f5;
+}
+html .player-dialog .player-episodes > button {
+  color: #a7c0d5;
+}
+html .player-dialog .player-episodes > button.active {
+  background: #285066;
+  color: #e3faff;
+}
+html .player-dialog .video-stage:fullscreen {
+  aspect-ratio: auto;
+  width: 100vw;
+  height: 100dvh;
+}
+.episodes-heading .season-episode-select {
+  width: 132px;
+  margin: 0;
+}
+.player-episodes .season-episode-select {
+  margin-bottom: 14px;
+}
+@media (max-width: 1000px) {
+  .online-cinema-layout {
+    grid-template-columns: minmax(0, 1fr) 195px;
+  }
+  .online-cinema-sidebar {
+    padding: 16px 12px;
+  }
+  .cinema-select > span {
+    display: none;
+  }
+  .cinema-control-row,
+  .cinema-control-row > div {
+    gap: 5px;
+  }
+  .cinema-volume {
+    display: none;
+  }
+  .cinema-time {
+    margin-inline: 3px;
+    font-size: 10px;
+  }
+  .cinema-select select {
+    padding: 8px 5px;
+    font-size: 10px;
+  }
+  .cinema-hud button {
+    width: 30px;
+    height: 32px;
+  }
+  .cinema-top {
+    padding: 14px 16px 35px;
+  }
+  .cinema-bottom {
+    padding-inline: 14px;
+  }
+}
+@media (max-width: 700px) {
+  .online-cinema-layout {
+    grid-template-columns: 1fr;
+  }
+  .online-cinema-sidebar {
+    max-height: 220px;
+  }
+  .online-cinema-episodes {
+    grid-template-columns: repeat(5, 1fr);
+  }
+  .online-cinema-stage {
+    min-height: 260px;
+  }
+  .cinema-window-header {
+    padding-inline: 12px;
+  }
+  .cinema-window-header > div > span {
+    display: block;
+    margin: 4px 0 0;
+  }
+  .cinema-source-badge {
+    font-size: 8px;
+  }
+  .cinema-top strong {
+    font-size: 12px;
+  }
+  .cinema-select select {
+    max-width: 114px;
+  }
+  .cinema-time {
+    font-size: 9px;
+  }
+  .cinema-hud button {
+    width: 27px;
+  }
+  .cinema-bottom {
+    padding-inline: 10px;
+  }
+  .cinema-control-row > div {
+    gap: 2px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cinema-hud {
+    transition: none;
+  }
+  .cinema-buffer i {
+    animation-duration: 1.8s;
+  }
+}
+html .player-dialog .video-stage {
+  width: 100%;
+  height: auto;
+  max-height: none;
+  border-radius: 0;
+  aspect-ratio: 16/9;
+}
+html .player-dialog.player-expanded .video-stage {
+  height: auto;
+  aspect-ratio: 16/9;
+}
+html .player-dialog .video-stage:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  aspect-ratio: auto;
+}
+.cinema-top > div:first-child {
+  visibility: hidden;
+}
+.online-cinema-stage:fullscreen {
+  width: 100vw;
+  height: 100dvh;
+  aspect-ratio: auto;
+  background: #080b10;
+}
+:is(.cinema-video:fullscreen, .video-stage:fullscreen .cinema-video, .online-cinema-stage:fullscreen .cinema-video)
+  .cinema-bottom {
+  padding: 55px 28px 20px;
+}
+:is(.cinema-video:fullscreen, .video-stage:fullscreen .cinema-video, .online-cinema-stage:fullscreen .cinema-video)
+  .cinema-hud
+  button {
+  width: 42px;
+  height: 42px;
+}
+:is(.cinema-video:fullscreen, .video-stage:fullscreen .cinema-video, .online-cinema-stage:fullscreen .cinema-video)
+  .cinema-time {
+  font-size: 15px;
+}
+:is(.cinema-video:fullscreen, .video-stage:fullscreen .cinema-video, .online-cinema-stage:fullscreen .cinema-video)
+  .cinema-select
+  select {
+  font-size: 14px;
+  padding: 10px 12px;
+  max-width: 190px;
+}

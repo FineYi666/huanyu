@@ -1,3 +1,4 @@
+import {publicVideoUrl} from './stream-probe.mjs'
 function videoUrl(value, base) {
   const url = new URL(value, base)
   if (url.protocol !== 'https:' || url.username || url.password)
@@ -10,6 +11,7 @@ function videoUrl(value, base) {
 export async function fetchVideoSource(source, { method, range, signal }) {
   let url = videoUrl(source.url)
   for (let redirects = 0; redirects <= 5; redirects++) {
+    if(source.web)publicVideoUrl(url.href)
     const headers = new Headers(source.headers)
     if (
       !['quark.cn', 'uc.cn', 'ucweb.com'].some(

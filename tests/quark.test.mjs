@@ -230,6 +230,8 @@ test('online playback chooses the highest permitted ready quality regardless of 
     const stream = await quark.getStream({}, episode, false)
     assert.equal(stream.url, 'https://video.quark.cn/2k.m3u8')
     assert.equal(stream.format, 'hls')
+    assert.equal(stream.variants[0].id,'2k')
+    assert.ok(stream.variants.every(item=>item.label && !item.url.includes('4k')))
     fourKAccessible = true
     assert.equal(
       (await quark.getStream({}, episode, false)).url,

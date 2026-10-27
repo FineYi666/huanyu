@@ -22,6 +22,9 @@ export type Source = 'local' | 'quark' | 'url' | 'sample'
 export interface Episode {
   id: string
   name: string
+  season?: number | null
+  seasonGroup?: string
+  episodeNumber?: number
   size?: number
   fid?: string
   shareToken?: string

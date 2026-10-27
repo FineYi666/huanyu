@@ -23,3 +23,4 @@ import './cinema-layout.css'
 
 import './scene-skins.css'
 import './movie-discovery.css'
+import './cinema-player.css'

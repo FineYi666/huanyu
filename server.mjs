@@ -24,6 +24,9 @@ import { createGameResourceSearch } from './game-resources.mjs'
 import { createMovieCatalog } from './movie-catalog.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
 import { createWebSources } from './web-sources.mjs'
+import { qualityLabel } from './stream-quality.mjs'
+import { publicVideoUrl } from './stream-probe.mjs'
+import { episodeLayout } from './episode-seasons.mjs'
 import { attachSeasonalMetadata } from './seasonal-metadata.mjs'
 import { createSubtitleService } from './subtitle-service.mjs'
 import { replaceMediaSource } from './replace-source.mjs'
@@ -139,6 +142,7 @@ function autoMetadata(ids) {
 }
 function publicMedia(media) {
   const { stoken, passcode, metadataInfo, subtitleFiles, ...clean } = media
+  const layout = episodeLayout(media.episodes, media.title)
   return {
     ...clean,
     cover: posters.localize(clean.cover),
@@ -152,7 +156,7 @@ function publicMedia(media) {
         savedFid,
         parentFid,
         ...episode
-      }) => episode,
+      }, index) => ({...episode,season:layout[index].season,seasonGroup:layout[index].group,episodeNumber:layout[index].number}),
     ),
   }
 }
@@ -358,10 +362,12 @@ async function proxyVideo(req, res, source, localOrigin) {
   ) {
     const playlist = await upstream.text()
     function proxyUrl(url) {
+      if(source.web)publicVideoUrl(url)
       const token = randomUUID()
       streamCache.set(token, {
         url,
         headers: source.headers,
+        web: source.web,
         expires: Date.now() + 4 * 3600000,
       })
       return `${localOrigin}/api/stream/${token}`
@@ -920,25 +926,27 @@ const server = http.createServer(async (req, res) => {
       const keyword = String(input?.keyword || '').trim()
       if (keyword.length < 2)
         return json(res, { error: '请输入 2 个字以上的名称' }, 400)
-      return json(res, await webSources.search(keyword))
+      const subject = await Promise.resolve(importSubject(input.subjectId)).catch(() => null)
+      const aliases = subject && [subject.title, subject.subtitle].includes(keyword) ? [subject.title, subject.subtitle] : []
+      return json(res, await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime' }))
+    }
+    if (route === '/api/web-sources/report' && req.method === 'POST') {
+      const input = await body(req)
+      webSources.report(input.resultId, input.episodeId)
+      return json(res, { ok: true })
     }
     // 网页源在线播放代理：m3u8/mp4 直链经幻屿转发（支持 Range 与 HLS）。
     if (route === '/api/web-stream' && req.method === 'POST') {
       const input = await body(req)
-      const target = String(input?.url || '')
-      if (!/^https?:\/\//.test(target))
-        return json(res, { error: '播放地址不正确' }, 400)
-      const source = await fetchVideoSource(
-        { url: target, headers: input?.headers || {} },
-        { method: 'GET' },
-      )
+      if(typeof input.resultId!=='string'||typeof input.episodeId!=='string')return json(res,{error:'请从已校验的搜索结果中选择剧集'},400)
+      const source = await webSources.resolve(input.resultId, input.episodeId)
       const token = randomUUID()
       streamCache.set(token, {
-        url: target,
-        headers: input?.headers || {},
+        ...source,
         expires: Date.now() + 4 * 3600000,
       })
-      return json(res, { url: `${origin}/api/stream/${token}`, format: source?.format || 'file' })
+      const qualities=(source.variants||[]).map((variant,index)=>{const variantToken=index===0?token:randomUUID();if(index!==0)streamCache.set(variantToken,{...variant,headers:source.headers,web:true,expires:Date.now()+4*3600000});return{id:`quality-${index}`,label:qualityLabel(variant.height),url:`/api/stream/${variantToken}`,format:variant.format}})
+      return json(res, { url: `/api/stream/${token}`, format: source.format,qualities })
     }
     if (route === '/api/games/resource-search' && req.method === 'GET') {
       try {
@@ -1102,7 +1110,12 @@ const server = http.createServer(async (req, res) => {
         if (cached.expires < Date.now() || (input.resave === true && cached.mediaId === media.id && cached.episodeId === episode.id)) streamCache.delete(token)
       const token = randomUUID()
       streamCache.set(token, { ...source, mediaId:media.id, episodeId:episode.id, expires: Date.now() + 4 * 3600000 })
-      return json(res, { url: `/api/stream/${token}`, format: source.format, subtitleContext:token })
+      const qualities=(source.variants || []).map((variant,index)=>{
+        const variantToken=index===0?token:randomUUID()
+        if(index!==0)streamCache.set(variantToken,{...variant,mediaId:media.id,episodeId:episode.id,expires:Date.now()+4*3600000})
+        return {id:variant.id,label:variant.label,url:`/api/stream/${variantToken}`,format:variant.format,context:variantToken}
+      })
+      return json(res, { url: `/api/stream/${token}`, format: source.format, subtitleContext:token,qualities })
     }
     const embeddedFile=/^\/api\/subtitles\/embedded\/([a-f0-9]{32})\.vtt$/.exec(route)
     if(embeddedFile && req.method==='GET') {

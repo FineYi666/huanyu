@@ -1,3 +1,5 @@
+import { episodeLayout } from '../episode-seasons.mjs'
+import type { Episode } from './types'
 const digits = '零一二三四五六七八九'
 const units = ['', '十', '百', '千']
 
@@ -26,21 +28,24 @@ function chineseNumber(value: number): string {
 }
 
 /** Index belongs to the full episode list, never the filtered or reversed view. */
-export function episodeLabel(index: number): string {
-  return `第${chineseNumber(index + 1)}集`
+export function episodeLabel(index: number, episodes?: Episode[], title = ''): string {
+  const item = episodes && episodeLayout(episodes, title)[index]
+  return `${item?.season ? `第${chineseNumber(item.season)}季 · ` : item?.group === 'special' ? '特别篇 · ' : ''}第${chineseNumber(item?.number || index + 1)}集`
 }
 
 export function matchesEpisode(
   name: string,
   index: number,
   query: string,
+  episodes?: Episode[],
+  title = '',
 ): boolean {
   const term = query.trim().normalize('NFKC').toLowerCase().replace(/\s+/g, '')
   if (!term) return true
   if (/^(?:第)?\d+(?:集|话)?$/.test(term))
-    return Number(term.replace(/\D/g, '')) === index + 1
+    return Number(term.replace(/\D/g, '')) === (episodes ? episodeLayout(episodes, title)[index]?.number : index + 1)
   return (
-    episodeLabel(index).includes(term) ||
+    episodeLabel(index, episodes, title).includes(term) ||
     name.normalize('NFKC').toLowerCase().replace(/\s+/g, '').includes(term)
   )
 }

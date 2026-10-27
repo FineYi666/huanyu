@@ -5,6 +5,7 @@ import {
   fileId,
 } from './media-utils.mjs'
 import { isSubtitle } from './subtitles.mjs'
+import { qualityLabel } from './stream-quality.mjs'
 
 const BASE = 'https://drive-pc.quark.cn/1/clouddrive'
 const QUALITY_RANK = { low: 1, normal: 2, high: 3, super: 4, '2k': 5, '4k': 6 }
@@ -186,17 +187,16 @@ export function createQuark(getCookie, { onCookie } = {}) {
       }
     }
     async function downloadFile(fid) {
-      let url
-      let format = 'file'
-      let container = ''
-      let variant = 'original'
+      const variants=[]
+      const headers={ Cookie:getCookie(), Referer:'https://pan.quark.cn/', 'User-Agent':UA }
       try {
         const download = await request('/file/download', { fids: [fid] })
-        url = download.data?.[0]?.download_url
+        const url=download.data?.[0]?.download_url
+        if(url)variants.push({id:'original',label:qualityLabel(0,'original'),url,format:'file',container:'',variant:'original',headers})
       } catch (error) {
         if (!/download file size limit/i.test(error.message)) throw error
-        // Large-file downloads can be restricted while online playback is allowed.
-        // Use the same playback API and access flags as Quark's official web player.
+      }
+      try {
         const playback = await request('/file/v2/play', {
           fid,
           resolutions: 'normal,low,high,super,2k,4k',
@@ -209,42 +209,28 @@ export function createQuark(getCookie, { onCookie } = {}) {
             item.trans_status !== 'transcoding' &&
             item.video_info?.url,
         )
-        const selected = available.sort(
+        available.sort(
           (a, b) =>
             (QUALITY_RANK[b.resolution] || 0) -
             (QUALITY_RANK[a.resolution] || 0),
-        )[0]
-        if (!selected) {
+        )
+        if (!available.length && !variants.length) {
           if (list.some((item) => item.trans_status === 'transcoding'))
             throw new Error('夸克正在转码这一集，请稍后重试')
           throw new Error(
             '夸克未提供当前账号可用的在线播放画质，请在官方网页检查播放权限',
           )
         }
-        url = selected.video_info.url
-        container = selected.video_info.format || ''
-        variant = `${selected.resolution}/${selected.video_info.size || selected.video_info.format_ext?.size || ''}/${selected.video_info.update_time || ''}`
-        format =
-          selected.video_info.file_format === 'm3u8' ||
-          new URL(url).pathname.endsWith('.m3u8')
-            ? 'hls'
-            : 'file'
-      }
-      if (!url)
+        for(const selected of available){
+          const info=selected.video_info,url=info.url
+          variants.push({id:selected.resolution,label:qualityLabel(info.height,selected.resolution),url,container:info.format||'',variant:`${selected.resolution}/${info.size||info.format_ext?.size||''}/${info.update_time||''}`,format:info.file_format==='m3u8'||new URL(url).pathname.endsWith('.m3u8')?'hls':'file',headers})
+        }
+      }catch(error){if(!variants.length)throw error}
+      if (!variants.length)
         throw new Error(
           '未取得播放地址，资源可能受账号权限限制，请使用官方网页播放',
         )
-      return {
-        url,
-        format,
-        container,
-        variant,
-        headers: {
-          Cookie: getCookie(),
-          Referer: 'https://pan.quark.cn/',
-          'User-Agent': UA,
-        },
-      }
+      return {...variants[0],variants}
     }
     if (!episode.savedFid) {
       if (!authorizeSave) {

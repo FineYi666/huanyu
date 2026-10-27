@@ -1,9 +1,11 @@
 import { forwardRef, useEffect, useRef, useState, useId, type VideoHTMLAttributes } from 'react'
 import { DEFAULT_SUBTITLE_STYLE, positionSubtitleCue, subtitleFontPixels, type SubtitleStyle } from '../subtitle-style.mjs'
 import type { SubtitleTrack } from './SubtitlePanel'
+import type Hls from 'hls.js'
+import { rankLevels, type QualityOption } from '../stream-quality.mjs'
 export type NativeSubtitleTrack = { id: string; label: string; language: string; default?: boolean }
 
-type Props = VideoHTMLAttributes<HTMLVideoElement> & {
+export type StreamVideoProps = VideoHTMLAttributes<HTMLVideoElement> & {
   src: string
   format?: string
   onStreamError: (message: string) => void
@@ -12,13 +14,19 @@ type Props = VideoHTMLAttributes<HTMLVideoElement> & {
   nativeSubtitleId?: string
   onNativeTracks?: (tracks: NativeSubtitleTrack[]) => void
   subtitleStyle?: SubtitleStyle
+  qualityId?: string
+  onQualities?: (options:QualityOption[])=>void
 }
 
-const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
-  { src, format, onStreamError, subtitle, onSubtitleError, nativeSubtitleId = 'off', onNativeTracks, subtitleStyle = DEFAULT_SUBTITLE_STYLE, ...props },
+const StreamVideo = forwardRef<HTMLVideoElement, StreamVideoProps>(function StreamVideo(
+  { src, format, onStreamError, subtitle, onSubtitleError, nativeSubtitleId = 'off', onNativeTracks, subtitleStyle = DEFAULT_SUBTITLE_STYLE, qualityId, onQualities, ...props },
   forwardedRef,
 ) {
   const element = useRef<HTMLVideoElement | null>(null)
+  const hlsInstance = useRef<Hls|null>(null)
+  const qualitiesCallback = useRef(onQualities)
+  qualitiesCallback.current = onQualities
+  useEffect(()=>{const hls=hlsInstance.current;if(hls && qualityId?.startsWith('hls:')){const index=Number(qualityId.slice(4));if(Number.isInteger(index)&&hls.levels[index]){hls.currentLevel=index;hls.loadLevel=index}}},[qualityId])
   const subtitleElement = useRef<HTMLTrackElement | null>(null)
   const captionId = useId().replace(/[^a-zA-Z0-9]/g,'')
   const [fontPixels,setFontPixels] = useState(24)
@@ -141,7 +149,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
           return
         }
         reportError.current(
-          '当前浏览器不支持此视频流，请用 Edge 或 Chrome 打开映屿',
+          '当前环境不支持此视频流，请使用新版幻屿桌面端或升级浏览器',
         )
         return
       }
@@ -150,7 +158,8 @@ const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
         backBufferLength: 30,
         autoStartLoad: false,
       })
-      destroy = () => hls.destroy()
+      hlsInstance.current = hls
+      destroy = () => {hls.destroy();hlsInstance.current=null}
       let recovered = false
       hls.on(Hls.Events.ERROR, (_, data) => {
         if (!data.fatal) return
@@ -162,7 +171,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
         reportError.current(
           data.type === Hls.ErrorTypes.NETWORK_ERROR
             ? '视频流连接中断，请检查网络后重新尝试'
-            : '当前浏览器无法解码此视频流，请前往夸克官方页面观看',
+            : '当前线路无法解码，可尝试其他画质或播放线路',
         )
         hls.destroy()
       })
@@ -173,8 +182,8 @@ const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
         for (let index = 1; index < hls.levels.length; index++) {
           const level = hls.levels[index]
           const best = hls.levels[highest]
-          const pixels = level.width * level.height
-          const bestPixels = best.width * best.height
+          const pixels = (level.width || 0) * (level.height || 0)
+          const bestPixels = (best.width || 0) * (best.height || 0)
           if (
             pixels > bestPixels ||
             (pixels === bestPixels && level.bitrate > best.bitrate)
@@ -183,6 +192,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, Props>(function StreamVideo(
         }
         hls.startLevel = highest
         hls.loadLevel = highest
+        qualitiesCallback.current?.(rankLevels(hls.levels))
         hls.startLoad()
         if (video.autoplay) void video.play().catch(() => {})
       })

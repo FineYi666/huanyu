@@ -61,6 +61,7 @@ import MovieDiscovery from './MovieDiscovery'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
 import DeepSeekSettings from './DeepSeekSettings'
 import { episodeLabel, matchesEpisode } from './episode-labels'
+import { episodeLayout } from '../episode-seasons.mjs'
 import LocalPicker from './LocalPicker'
 import QuarkQrConnect from './QuarkQrConnect'
 import {
@@ -77,7 +78,8 @@ import NewSeasonPage, {
   ResourceSearch,
   type SeasonTitle,
 } from './NewSeasonPage'
-import StreamVideo, { type NativeSubtitleTrack } from './StreamVideo'
+import type { NativeSubtitleTrack } from './StreamVideo'
+import CinemaVideo,{type PlaybackQuality} from './CinemaVideo'
 import EmbeddedSubtitlePanel from './EmbeddedSubtitlePanel'
 import SubtitleAppearance from './SubtitleAppearance'
 import { normalizeSubtitleStyle, type SubtitleStyle } from '../subtitle-style.mjs'
@@ -458,6 +460,9 @@ function DetailDialog({
 }) {
   const [search, setSearch] = useState('')
   const [reverse, setReverse] = useState(false)
+  const [seasonGroup, setSeasonGroup] = useState('all')
+  const episodeInfo = episodeLayout(media.episodes, media.title)
+  const seasonGroups = [...new Map(episodeInfo.map(item => [item.group, item.groupLabel])).entries()]
   const [editing, setEditing] = useState(false)
   const [removing, setRemoving] = useState(false)
   const [title, setTitle] = useState(media.title)
@@ -500,7 +505,7 @@ function DetailDialog({
     }
   }
   const episodes = media.episodes.filter((e, index) =>
-    matchesEpisode(e.name, index, search),
+    (seasonGroup === 'all' || episodeInfo[index].group === seasonGroup) && matchesEpisode(e.name, index, search, media.episodes, media.title),
   )
   const display = reverse ? [...episodes].reverse() : episodes
   async function saveEdit() {
@@ -538,7 +543,7 @@ function DetailDialog({
   }
   const latest = latestProgress(media)
   const resume =
-    media.episodes.find((e) => e.id === latest?.[0]) || media.episodes[0]
+    episodes.find((e) => e.id === latest?.[0]) || episodes[0]
   return (
     <Dialog title="作品详情" onClose={onClose} className="detail-dialog">
       <div className="detail-overview">
@@ -730,6 +735,7 @@ function DetailDialog({
         </h3>
         {media.episodes.length > 0 && (
           <div>
+            {seasonGroups.length > 1 && <select className="season-episode-select" aria-label="选择剧集季度" value={seasonGroup} onChange={event => setSeasonGroup(event.target.value)}><option value="all">全部季度</option>{seasonGroups.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>}
             <label className="episode-search">
               <Search size={15} />
               <input
@@ -776,10 +782,10 @@ function DetailDialog({
                 onClick={() => onPlay(episode)}
               >
                 <span className="episode-number">
-                  {String(index + 1).padStart(2, '0')}
+                  {String(episodeInfo[index].number).padStart(2, '0')}
                 </span>
                 <div>
-                  <strong>{episodeLabel(index)}</strong>
+                  <strong>{episodeLabel(index, media.episodes, media.title)}</strong>
                   <small>
                     {progress
                       ? `${watched ? '已看完' : `看到 ${timeLabel(progress.time)}`} · `
@@ -890,6 +896,9 @@ function Player({
   const [episode, setEpisode] = useState(initialEpisode)
   const [url, setUrl] = useState('')
   const [format, setFormat] = useState('file')
+  const [qualities,setQualities]=useState<PlaybackQuality[]>([])
+  const [qualityId,setQualityId]=useState('')
+  const qualityResume=useRef<{time:number;paused:boolean;rate:number}|null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(true)
   const [saveConsent, setSaveConsent] = useState(false)
@@ -944,6 +953,9 @@ function Player({
   const lastSaved = useRef(0)
   const requestIndex = useRef(0)
   const index = media.episodes.findIndex((e) => e.id === episode.id)
+  const episodeInfo = episodeLayout(media.episodes, media.title)
+  const activeGroup = episodeInfo[index]?.group
+  const seasonGroups = [...new Map(episodeInfo.map(item => [item.group, item.groupLabel])).entries()]
   const save = useCallback(() => {
     const element = video.current
     if (
@@ -978,6 +990,9 @@ function Player({
     setLoading(true)
     setError('')
     setUrl('')
+    setQualities([])
+    setQualityId('')
+    qualityResume.current=null
     setSaveConsent(false)
     setRestoreConfirm(false)
     try {
@@ -1000,6 +1015,8 @@ function Player({
       }
       if (!response.ok) throw new Error(data.error)
       setFormat(data.format || 'file')
+      setQualities(data.qualities||[])
+      setQualityId(data.qualities?.[0]?.id||'')
       setSubtitleContext(data.subtitleContext || '')
       setUrl(data.url)
     } catch (e) {
@@ -1028,15 +1045,25 @@ function Player({
         onClose()
       }}
       className={`player-dialog ${expanded ? 'player-expanded' : ''}`}
+      hideHeader
     >
+      <div className="cinema-window-header"><button aria-label="关闭播放器" onClick={()=>{save();onClose()}}><ChevronLeft size={20}/></button><div><strong>{media.title}</strong><span>{episodeLabel(index,media.episodes,media.title)}</span></div><span className="cinema-source-badge"><SourceIcon source={media.source}/>{sourceNames[media.source]}</span></div>
       <div className="player-layout">
         <div className="player-main">
           <div className="video-stage" ref={stage} onDoubleClick={(event) => { if (event.target === stage.current || event.target === video.current) void toggleFullscreen() }}>
             {fullscreen && <button className="button fullscreen-exit" onClick={() => void toggleFullscreen()}><Minimize size={16} /> 退出全屏</button>}
             {url && (
-              <StreamVideo
+              <CinemaVideo
                 ref={video}
-                key={url}
+                key={episode.id}
+                title={media.title}
+                episodeTitle={episodeLabel(index,media.episodes,media.title)}
+                qualities={qualities}
+                qualityId={qualityId}
+                onQualityChange={option=>{const element=video.current;qualityResume.current=element?{time:element.currentTime,paused:element.paused,rate:element.playbackRate}:null;if(element)setRate(String(element.playbackRate));setQualityId(option.id);setFormat(option.format||'file');setSubtitleContext(option.context||'');setUrl(option.url)}}
+                onFullscreen={()=>void toggleFullscreen()}
+                onPrevious={index>0?()=>void load(media.episodes[index-1]):undefined}
+                onNext={index<media.episodes.length-1?()=>void load(media.episodes[index+1]):undefined}
                 src={url}
                 format={format}
                 subtitle={(!useExternal && embeddedAvailable) || subtitlesEnabled ? subtitle : null}
@@ -1047,14 +1074,14 @@ function Player({
                 onStreamError={setError}
                 data-media-id={media.id}
                 data-episode-id={episode.id}
-                controls
-                autoPlay
+                autoPlay={!qualityResume.current?.paused}
                 playsInline
                 preload="metadata"
                 onLoadedMetadata={() => {
                   const element = video.current!
                   const progress = media.progress?.[episode.id]
-                  if (progress && progress.time < element.duration - 10)
+                  if(qualityResume.current){const point=qualityResume.current;element.currentTime=Math.min(point.time,Math.max(0,element.duration-1));element.playbackRate=point.rate;if(point.paused)element.pause();qualityResume.current=null}
+                  else if (progress && progress.time < element.duration - 10)
                     element.currentTime = progress.time
                   element.playbackRate = Number(rate)
                 }}
@@ -1090,7 +1117,7 @@ function Player({
                     </p>
                   </>
                 ) : restoreConfirm ? (
-                  <><Cloud size={36}/><h3>重新转存{episodeLabel(index)}</h3><p>从原分享重新保存本集到夸克网盘根目录{episode.size ? `，约 ${sizeLabel(episode.size)}` : ''}。<br/>会占用网盘空间，不会删除现有文件。原分享需要仍然有效。</p><div className="player-error-actions"><button className="button outline" onClick={cancelRestore}>取消</button><button className="button primary" onClick={()=>load(episode,true,true)}><RefreshCw size={16}/>重新转存并播放</button></div></>
+                  <><Cloud size={36}/><h3>重新转存{episodeLabel(index, media.episodes, media.title)}</h3><p>从原分享重新保存本集到夸克网盘根目录{episode.size ? `，约 ${sizeLabel(episode.size)}` : ''}。<br/>会占用网盘空间，不会删除现有文件。原分享需要仍然有效。</p><div className="player-error-actions"><button className="button outline" onClick={cancelRestore}>取消</button><button className="button primary" onClick={()=>load(episode,true,true)}><RefreshCw size={16}/>重新转存并播放</button></div></>
                 ) : saveConsent ? (
                   <>
                     <Cloud size={36} />
@@ -1151,43 +1178,6 @@ function Player({
               </div>
             )}
           </div>
-          <div className="player-toolbar">
-            <div>
-              <span>正在播放 · {media.title}</span>
-              <h3 title={`原文件名：${episode.name}`}>{episodeLabel(index)}</h3>
-            </div>
-            <label className="speed-select">
-              <select
-                aria-label="播放速度"
-                value={rate}
-                onChange={(e) => setRate(e.target.value)}
-              >
-                {['0.5', '0.75', '1', '1.25', '1.5', '2'].map((v) => (
-                  <option key={v} value={v}>
-                    {v === '1' ? '正常速度' : `${v} 倍速`}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <IconButton
-              label="上一集"
-              onClick={() => {
-                if (media.episodes[index - 1]) load(media.episodes[index - 1])
-              }}
-              className={index === 0 ? 'disabled' : ''}
-            >
-              <ChevronLeft size={21} />
-            </IconButton>
-            <IconButton
-              label="下一集"
-              onClick={() => {
-                if (media.episodes[index + 1]) load(media.episodes[index + 1])
-              }}
-              className={index === media.episodes.length - 1 ? 'disabled' : ''}
-            >
-              <ChevronRight size={21} />
-            </IconButton>
-          </div>
           <div className="playback-options">
             <div className="subtitle-master"><button type="button" role="switch" aria-label="外挂字幕与自动搜索" aria-checked={subtitlesEnabled} className={`switch ${subtitlesEnabled ? 'on' : ''}`} onClick={() => onSubtitlesEnabled(!subtitlesEnabled)}><i /></button><div><strong>外挂字幕与自动搜索 · {subtitlesEnabled ? '开启' : '关闭'}</strong><small>视频画面原有字幕保留</small></div></div>
             <div className="playback-option-actions">
@@ -1219,17 +1209,18 @@ function Player({
         <aside className="player-episodes">
           <div>
             <h3>选集</h3>
-            <span>{media.episodes.length} 集</span>
+            <span>{episodeInfo.filter(item=>item.group===activeGroup).length} 集</span>
           </div>
-          {media.episodes.map((item, i) => (
+          {seasonGroups.length > 1 && <select className="season-episode-select" aria-label="播放器剧集季度" value={activeGroup} onChange={event => { const first=episodeInfo.find(item=>item.group===event.target.value); if(first)void load(media.episodes[first.index]) }}>{seasonGroups.map(([id,label])=><option key={id} value={id}>{label}</option>)}</select>}
+          {media.episodes.map((item, i) => episodeInfo[i].group === activeGroup && (
             <button
               className={item.id === episode.id ? 'active' : ''}
               key={item.id}
               title={`原文件名：${item.name}`}
               onClick={() => load(item)}
             >
-              <span>{String(i + 1).padStart(2, '0')}</span>
-              <strong>{episodeLabel(i)}</strong>
+              <span>{String(episodeInfo[i].number).padStart(2, '0')}</span>
+              <strong>{episodeLabel(i, media.episodes, media.title)}</strong>
               {item.id === episode.id && (
                 <span className="playing-bars">
                   <i />
