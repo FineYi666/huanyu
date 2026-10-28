@@ -15,6 +15,8 @@ import {
 import { api } from './api'
 import type { WebSourceResult } from './OnlinePlayer'
 import OnlineSources from './OnlineSources'
+import QuarkResults from './QuarkResults'
+import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import type { MediaCategory } from '../media-category.mjs'
 import Dialog from './ui'
 import HeroCarousel from './HeroCarousel'
@@ -452,17 +454,6 @@ export default function NewSeasonPage({
   )
 }
 
-type Resource = {
-  id: string
-  title: string
-  description: string
-  url: string
-  code: string
-  source: string
-  sources?: string[]
-  match?: 'season' | 'related' | 'other-season'
-  updatedAt?: string
-}
 export function ResourceSearch({
   subject,
   onImported,
@@ -474,23 +465,10 @@ export function ResourceSearch({
   onWorking: (busy: boolean) => void
   onManualImport: () => void
 }) {
-  const [query, setQuery] = useState(subject.title),
-    [results, setResults] = useState<Resource[]>([]),
-    [loading, setLoading] = useState(true),
-    [error, setError] = useState(''),
-    [searched, setSearched] = useState(false),
-    [importing, setImporting] = useState('')
-  const [sources, setSources] = useState<
-    {
-      name: string
-      url: string
-      status: string
-      count: number
-      message?: string
-    }[]
-  >([])
-  const [terms, setTerms] = useState<string[]>([])
-  const abort = useRef<AbortController | null>(null)
+  const [query, setQuery] = useState(subject.title)
+  const [importing, setImporting] = useState('')
+  const [importError, setImportError] = useState('')
+  const quark = useQuarkSearch()
   const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [webError, setWebError] = useState('')
@@ -512,44 +490,18 @@ export function ResourceSearch({
       if(revision===webRevision.current)setWebBusy(false)
     }
   }
-  async function search(value: string) {
-    abort.current?.abort()
-    const controller = new AbortController()
+  function search(value: string) {
+    setImportError('')
     void loadWebSources(value)
-    abort.current = controller
-    setLoading(true)
-    setError('')
-    setResults([])
-    setSources([])
-    setTerms([])
-    setSearched(false)
-    try {
-      const response = await fetch('/api/resources/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: value, subjectId: subject.id }),
-        signal: controller.signal,
-      })
-      const data = await response.json()
-      if (controller.signal.aborted) return
-      if (!response.ok) throw new Error(data.error)
-      setResults(data.results)
-      setSources(data.sources || [])
-      setTerms(data.queries || [])
-      setSearched(true)
-    } catch (e) {
-      if (!controller.signal.aborted) setError((e as Error).message)
-    } finally {
-      if (!controller.signal.aborted) setLoading(false)
-    }
+    void quark.search(value, subject.id)
   }
   useEffect(() => {
-    void search(subject.title)
-    return () => {abort.current?.abort();webRevision.current++}
+    search(subject.title)
+    return () => { webRevision.current++ }
   }, [subject.id, subject.title])
-  async function importResource(resource: Resource) {
+  async function importResource(resource: QuarkResource) {
     setImporting(resource.id)
-    setError('')
+    setImportError('')
     onWorking(true)
     try {
       const data = await api<AppState & { ids: string[]; count: number }>(
@@ -565,7 +517,7 @@ export function ResourceSearch({
       )
       onImported(data, data.ids, data.count)
     } catch (e) {
-      setError((e as Error).message)
+      setImportError((e as Error).message)
     } finally {
       setImporting('')
       onWorking(false)
@@ -615,7 +567,7 @@ export function ResourceSearch({
           required
         />
         <button className="button primary" disabled={!!importing}>
-          {loading ? (
+          {quark.loading ? (
             <LoaderCircle size={15} className="spin" />
           ) : (
             <Search size={15} />
@@ -627,109 +579,7 @@ export function ResourceSearch({
         同时搜索夸克盘搜、PanSearch 和
         PanSou，自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
-      <div className="resource-source-status" aria-label="搜索来源状态">
-        {loading ? (
-          <span>正在查询多个来源，网页来源可能需要约 10–30 秒</span>
-        ) : (
-          sources.map((source) => (
-            <a
-              key={source.name}
-              href={source.url}
-              target="_blank"
-              rel="noreferrer"
-              title={source.message}
-              className={source.status === 'error' ? 'source-unavailable' : ''}
-            >
-              {source.name}
-              <span>
-                {source.status === 'error'
-                  ? '暂不可用 ↗'
-                  : `${source.count} 条线索 ↗`}
-              </span>
-            </a>
-          ))
-        )}
-      </div>
-      {!!terms.length && (
-        <p className="resource-terms">已尝试：{terms.join(' / ')}</p>
-      )}
-      {error && (
-        <div className="form-error" role="alert">
-          {error}
-        </div>
-      )}
-      {loading ? (
-        <div className="season-empty">
-          <LoaderCircle size={30} className="spin" />
-          <h3>正在查找夸克资源…</h3>
-          <p>正在匹配作品名称与公开分享链接。</p>
-        </div>
-      ) : results.length ? (
-        <div className="resource-results">
-          {results.map((resource) => (
-            <article className="resource-result" key={resource.id}>
-              <span className="resource-cloud">
-                <Cloud size={22} />
-              </span>
-              <div>
-                <h4>{resource.title}</h4>
-                <p>
-                  {resource.description
-                    .replace(resource.title, '')
-                    .slice(0, 180)}
-                </p>
-                <span>
-                  夸克网盘 · {resource.sources?.join(' / ') || resource.source}
-                  {resource.updatedAt
-                    ? ` · ${resource.updatedAt.slice(0, 10)}`
-                    : ''}
-                </span>
-                <span
-                  className={`resource-match ${resource.match || 'related'}`}
-                >
-                  {resource.match === 'season'
-                    ? '季数匹配'
-                    : resource.match === 'other-season'
-                      ? '其他季资源，请核对'
-                      : '季数待核对'}
-                </span>
-                <a
-                  className="text-button"
-                  href={resource.url}
-                  target="_blank"
-                  rel="noreferrer"
-                >
-                  查看分享
-                  <ArrowUpRight size={11} />
-                </a>
-              </div>
-              <button
-                className="button primary"
-                disabled={!!importing}
-                onClick={() => void importResource(resource)}
-              >
-                {importing === resource.id ? (
-                  <LoaderCircle size={15} className="spin" />
-                ) : (
-                  <Cloud size={15} />
-                )}
-                导入此资源
-              </button>
-            </article>
-          ))}
-        </div>
-      ) : searched && !error ? (
-        <div className="season-empty">
-          <Cloud size={30} />
-          <h3>暂未找到这部作品的夸克分享</h3>
-          <p>
-            {sources.length &&
-            sources.every((source) => source.status === 'error')
-              ? '搜索来源暂时不可用。可打开下方网站查找，或直接导入已有分享链接。'
-              : '来源可能尚未收录，也可能使用了其他译名。可以修改关键词，或直接导入已有分享链接。'}
-          </p>
-        </div>
-      ) : null}
+      <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <OnlineSources results={webSources} busy={webBusy} error={webError} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <div className="resource-fallback-actions">
         <button
@@ -744,7 +594,7 @@ export function ResourceSearch({
           className="resource-source-link text-button"
           target="_blank"
           rel="noreferrer"
-          href={`https://www.zhongchuangwl.com/s/${encodeURIComponent(terms[0] || query)}/`}
+          href={`https://www.zhongchuangwl.com/s/${encodeURIComponent(quark.queries[0] || query)}/`}
         >
           打开夸克盘搜继续查找
           <ArrowUpRight size={13} />

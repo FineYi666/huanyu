@@ -27,6 +27,7 @@
 .web-source-episodes .online-play-entry { display: inline-flex; align-items: center; gap: 5px; color: var(--green); }
 .online-episode-grid { max-height: 200px; overflow-y: auto; padding: 4px; margin: 8px -4px 0; }
 .online-no-results { padding: 28px 10px; text-align: center; }.online-no-results h3 { font-size: 14px; }.online-no-results p { font-size: 12px; color: var(--secondary); margin-top: 8px; }
+.quark-results-block { border-top: 1px solid var(--border); margin-top: 25px; padding-top: 22px; }.quark-result-list { max-height: 570px; overflow-y: auto; padding-right: 6px; }.quark-pending { display: flex; align-items: center; gap: 7px; color: var(--secondary); font-size: 11px; margin: 15px 0 0; }.quark-quality-hint { color: var(--green) !important; font-weight: 600; }
 /* Eight navigation destinations must also fit in a normal desktop window. */
 @media (min-width: 1201px) and (max-width: 1500px) { html .app-shell .topbar { gap: 16px; padding-inline: 24px; } html .app-shell .main-nav .nav-item { padding-inline: 12px; } html .app-shell .search-box { width: 175px; } html .app-shell .wordmark > span { display: none; } }
 @media (max-width: 900px) { .tv-search-intro { grid-template-columns: 1fr; gap: 23px; padding: 26px; }.tv-search-copy h2 br { display: none; }.tv-search-copy p { max-width: 500px; }.tv-search-results { padding: 22px; } }

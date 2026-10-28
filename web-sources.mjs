@@ -1,11 +1,13 @@
 import { createHash } from 'node:crypto'
-import { matchesWork } from './media-match.mjs'
+import { matchesWork, workSearchTerms } from './media-match.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from './stream-probe.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 // Search -> selected work -> playback roads follows Kazumi's documented rule flow.
 // giriGiriLove endpoints/field mappings: Predidit/KazumiRules (MIT), see licenses.
 const SOURCES = [
+  { id: 'subo', name: '速播资源', api: 'https://subocj.com/api.php/provide/vod' },
+  { id: 'hn', name: '红牛资源', api: 'https://www.hongniuzy2.com/api.php/provide/vod' },
   {
     id: 'giri',
     name: 'giriGiriLove · 动漫',
@@ -144,6 +146,7 @@ export function createWebSources({
           .map(async (source) => {
             const found = [],
               deadline = AbortSignal.timeout(20000)
+            let matchedCount = 0, rejectedQuality = 0, rejectedPlayback = 0
             const boundedFetch = (url, options = {}) =>
               fetcher(url, {
                 ...options,
@@ -152,10 +155,7 @@ export function createWebSources({
                   : deadline,
               })
             try {
-              for (const term of [...new Set([query, ...aliases])].slice(
-                0,
-                2,
-              )) {
+              for (const term of workSearchTerms(query, aliases)) {
                 const data = await api(
                   source.anime
                     ? `${source.api}get_list?vod_name=${encodeURIComponent(term)}&offset=0&limit=20`
@@ -174,6 +174,7 @@ export function createWebSources({
                   }
                 }
                 const matched = candidates.filter(matches).slice(0, 4)
+                matchedCount += matched.length
                 await mapLimit(matched, 3, async (vod) => {
                   try {
                     const detail = source.anime
@@ -220,7 +221,7 @@ export function createWebSources({
                             { fetcher: boundedFetch },
                           )
                           const tier = resolutionHeight(checked.width, checked.height)
-                          if (tier && tier < minHeight) continue
+                          if (tier && tier < minHeight) { rejectedQuality++; continue }
                           item.height = checked.height || 0
                           item.width = checked.width || 0
                           item.qualityHeight = tier
@@ -232,6 +233,7 @@ export function createWebSources({
                           verified = true
                           break
                         } catch {
+                          rejectedPlayback++
                           failed.set(`${item.id}/${episode.id}`, now() + 120000)
                         }
                       }
@@ -251,14 +253,18 @@ export function createWebSources({
                 name: source.name,
                 status: 'ok',
                 count: found.length,
+                matchedCount,
+                message: found.length ? '' : rejectedQuality ? '找到作品，但画质低于当前筛选要求' : matchedCount ? '找到作品，但线路暂无法播放' : '未收录匹配作品',
                 results: found,
               }
             } catch {
               return {
                 name: source.name,
                 status: 'error',
-                count: 0,
-                results: [],
+                count: found.length,
+                matchedCount,
+                message: '来源响应超时或暂不可用',
+                results: found,
               }
             }
           }),

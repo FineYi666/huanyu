@@ -35,7 +35,7 @@ export function mergeQuarkCookies(current, setCookies) {
   return [...values].map(([key, value]) => `${key}=${value}`).join('; ')
 }
 
-export function createQuark(getCookie, { onCookie } = {}) {
+export function createQuark(getCookie, { onCookie, requestTimeout = 25000 } = {}) {
   let anonymousCookie = ''
   async function request(endpoint, body, params = {}) {
     const accountCookie = getCookie() || ''
@@ -59,7 +59,7 @@ export function createQuark(getCookie, { onCookie } = {}) {
           'User-Agent': UA,
         },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(25000),
+        signal: AbortSignal.timeout(requestTimeout),
       })
     } catch {
       throw new Error('无法连接夸克网盘，请检查网络后重试')
@@ -95,6 +95,30 @@ export function createQuark(getCookie, { onCookie } = {}) {
       throw error
     }
     return json
+  }
+
+  async function checkShare(text, code = '') {
+    try {
+      const parsed = parseQuarkShare(text, code)
+      const token = await request('/share/sharepage/token', {pwd_id:parsed.shareId,passcode:parsed.passcode})
+      if (!token.data?.stoken) return 'unknown'
+      const queue = ['0'], visited = new Set()
+      let truncated = false
+      while (queue.length && visited.size < 3) {
+        const fid = queue.shift()
+        if (visited.has(fid)) continue
+        visited.add(fid)
+        const page = await request('/share/sharepage/detail',undefined,{pwd_id:parsed.shareId,stoken:token.data.stoken,pdir_fid:fid,force:0,_page:1,_size:100,_fetch_total:1,_fetch_share:1})
+        const files = page.data?.list
+        if (!Array.isArray(files)) return 'unknown'
+        if (files.some(file=>isVideo(file.file_name))) return 'ready'
+        truncated ||= files.length === 100
+        for (const file of files) if (file.dir || file.file_type === 0) queue.push(file.fid)
+      }
+      return queue.length || truncated ? 'unknown' : 'invalid'
+    } catch (error) {
+      return /分享.*(?:取消|失效|不存在|过期|已删除|被删除|违规)/.test(error.message) ? 'invalid' : 'unknown'
+    }
   }
 
   async function importShare(text, code, title) {
@@ -394,5 +418,5 @@ export function createQuark(getCookie, { onCookie } = {}) {
     }
   }
 
-  return { importShare, getStream, checkAccount, findSubtitles, subtitleSource }
+  return { importShare, getStream, checkShare, checkAccount, findSubtitles, subtitleSource }
 }

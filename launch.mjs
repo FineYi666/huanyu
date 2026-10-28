@@ -5,10 +5,13 @@ import { openSync } from 'node:fs'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { prepareAppData } from './app-data.mjs'
+import { runtimeVersion } from './runtime-version.mjs'
 
 const root = path.dirname(fileURLToPath(import.meta.url))
 const port = Number(process.env.YINGYU_PORT || 4317)
 const url = `http://127.0.0.1:${port}`
+const expectedBuild = await runtimeVersion(root)
+let stale = false
 async function running() {
   try {
     const response = await fetch(url + '/api/health', {
@@ -17,6 +20,7 @@ async function running() {
     const json = await response.json()
     if (json.app !== 'yingyu')
       throw new Error('端口已被其他软件占用，请设置 YINGYU_PORT 后重试')
+    if (json.buildId !== expectedBuild) { stale = true; return false }
     return true
   } catch (error) {
     if (error.message.includes('端口')) throw error
@@ -55,6 +59,24 @@ try {
   await stat(path.join(root, 'dist', 'index.html'))
   if (!(await running())) {
     const data = await prepareAppData(root)
+    if (stale) {
+      // Update only our own backend through its authenticated, graceful shutdown.
+      // Never kill an arbitrary process merely because it owns the port.
+      let stopped = false
+      try {
+        const session = JSON.parse(await readFile(path.join(data, 'session.json'), 'utf8'))
+        if (session.port !== port || typeof session.token !== 'string') throw new Error('invalid launcher record')
+        const response = await fetch(url + '/api/shutdown', { method: 'POST', headers: {'Content-Type':'application/json'}, body:JSON.stringify({token:session.token}), signal:AbortSignal.timeout(3000) })
+        if (!response.ok) throw new Error('shutdown rejected')
+        for (let attempt = 0; attempt < 30; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 200))
+          try { await fetch(url + '/api/health', {signal:AbortSignal.timeout(500)}) }
+          catch { stopped = true; break }
+        }
+      } catch {}
+      if (!stopped) throw new Error('检测到旧版后台仍在运行，请完全退出幻屿（包括托盘）后重新打开。片库和登录信息已保留。')
+      stale = false
+    }
     await mkdir(data, { recursive: true })
     const log = openSync(path.join(data, 'server.log'), 'a')
     const errors = openSync(path.join(data, 'error.log'), 'a')

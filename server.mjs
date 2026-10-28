@@ -33,8 +33,10 @@ import { replaceMediaSource } from './replace-source.mjs'
 import { createEmbeddedSubtitles, subtitleContainer } from './embedded-subtitles.mjs'
 import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, parseLaunchArgs, searchSteamApps, fetchSteamAppDetail } from './games.mjs'
 import { prepareAppData } from './app-data.mjs'
+import { runtimeVersion } from './runtime-version.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
+const buildId = await runtimeVersion(ROOT)
 const movieCatalog = await createMovieCatalog(ROOT)
 const gameResources = createGameResourceSearch()
 const importSubject = (id) => typeof id === 'string' && id.startsWith('douban-')
@@ -43,8 +45,10 @@ const DATA = await prepareAppData(ROOT)
 const PORT = Number(process.env.YINGYU_PORT || 4317)
 const DEV = process.argv.includes('--dev')
 const localBrowser = createLocalBrowser()
+const publicShares = createQuark(() => '', {requestTimeout:5000})
 const resourceSearch = createResourceSearch({
   renderSearch: createRenderedSearch(ROOT),
+  validateShare: item => publicShares.checkShare(item.url,item.code),
 })
 const webSources = createWebSources()
 await mkdir(DATA, { recursive: true })
@@ -432,7 +436,7 @@ const server = http.createServer(async (req, res) => {
     if (route === '/api/state' && req.method === 'GET')
       return json(res, publicState())
     if (route === '/api/health')
-      return json(res, { ok: true, app: 'yingyu', version: '1.3.0' })
+      return json(res, { ok: true, app: 'yingyu', version: '1.3.0', buildId })
     if (route === '/api/recommendations' && req.method === 'GET')
       return json(res, posters.catalog(recommendations.get()))
     if (route === '/api/seasonal' && req.method === 'GET')
@@ -506,6 +510,7 @@ const server = http.createServer(async (req, res) => {
         await resourceSearch.search(
           input.query,
           useAliases ? [subject.title, subject.subtitle] : [],
+          {refresh:input.refresh === true},
         ),
       )
     }

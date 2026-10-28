@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { matchesWork } from '../media-match.mjs'
+import { matchesWork, workSearchTerms } from '../media-match.mjs'
 import { episodeLayout, seasonNumber } from '../episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from '../stream-probe.mjs'
 import { createWebSources, parsePlayRoads } from '../web-sources.mjs'
@@ -30,6 +30,24 @@ test('online work matching rejects unrelated titles, wrong seasons, commentary a
     }),
     false,
   )
+})
+
+test('season queries try the base title and match numeric season editions without accepting other works', () => {
+  assert.ok(workSearchTerms('庆余年 第二季').includes('庆余年'))
+  assert.equal(matchesWork({title:'庆余年2',type_name:'大陆剧'},'庆余年 第二季',{category:'tv'}),true)
+  assert.equal(matchesWork({title:'庆余年3',type_name:'大陆剧'},'庆余年 第二季',{category:'tv'}),false)
+  assert.equal(matchesWork({title:'琅琊榜 (2015)',type_name:'大陆剧'},'琅琊榜',{category:'tv'}),true)
+  assert.equal(matchesWork({title:'琅琊榜之风起长林',type_name:'大陆剧'},'琅琊榜',{category:'tv'}),false)
+})
+
+test('public HTTPS CDN media ports are supported while private hosts and credentials remain blocked', async () => {
+  const seen=[]
+  const value=await probeStream({url:'https://cdn.example/video.m3u8'},{fetcher:async url=>{
+    seen.push(String(url));return String(url).endsWith('.m3u8')?new Response('#EXTM3U\n#EXTINF:2,\nhttps://segments.example:65/first.ts'):ts()
+  },inspect:async()=>null})
+  assert.equal(value.format,'hls')
+  assert.ok(seen.includes('https://segments.example:65/first.ts'))
+  for(const url of ['https://127.0.0.1:65/a.ts','https://192.168.1.1:9999/a.ts','https://user:pass@cdn.example:65/a.ts','http://cdn.example:65/a.ts'])assert.throws(()=>publicVideoUrl(url))
 })
 
 test('TV search excludes same-name films, anime, unknown types and wrong seasons', async () => {

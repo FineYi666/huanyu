@@ -7,7 +7,49 @@ import {
   createResourceSearch,
   resourceQueries,
   resourceSeasonMatch,
+  extractQuarkResults,
+  resourceRelevance,
 } from '../resource-search.mjs'
+
+test('Quark matching filters same-word noise and does not truncate the wanted high-quality title behind aggregates', async () => {
+  assert.equal(resourceRelevance('山水狂飙','狂飙'),0)
+  assert.equal(resourceRelevance('狂飙赛车','狂飙'),0)
+  assert.equal(resourceRelevance('狂飙营数学课程','狂飙'),0)
+  const rows=[...Array.from({length:30},(_,i)=>({content:`名称：其他作品${i}\nhttps://pan.quark.cn/s/other${i}`})),{content:'名称：琅琊榜 (2015)【54集全】【4K】\nhttps://pan.quark.cn/s/langya4k'}]
+  const service=createResourceSearch({fetcher:async url=>String(url).includes('pansou.app')?Response.json({code:0,data:{merged_by_type:{}}}):new Response(`<script id="__NEXT_DATA__">${JSON.stringify({props:{pageProps:{data:{data:rows}}}})}</script>`)})
+  const value=await service.search('琅琊榜')
+  assert.equal(value.results.length,1)
+  assert.match(value.results[0].title,/54集全/)
+  assert.equal(value.results[0].qualityHint,'资源标注 4K')
+  const parsed=extractQuarkResults([{content:'名称：甲\nhttps://pan.quark.cn/s/first?pwd=aaaa\n名称：乙\nhttps://pan.quark.cn/s/second?pwd=bbbb'}],'https://www.pansearch.me')
+  assert.deepEqual(parsed.map(item=>item.code),['aaaa','bbbb'])
+})
+
+test('rendered Quark provider results complete a partial response automatically through polling', async () => {
+  let finish, renders=0
+  const service=createResourceSearch({renderSearch:()=>{renders++;return new Promise(resolve=>{finish=resolve})},fetcher:async url=>String(url).includes('pansou.app')?Response.json({code:0,data:{merged_by_type:{}}}):new Response('<script id="__NEXT_DATA__">{"props":{"pageProps":{"data":{"data":[]}}}}</script>')})
+  const initial=await service.search('测试剧')
+  assert.equal(initial.pending,true)
+  assert.equal(initial.sources.find(s=>s.name==='夸克盘搜').status,'loading')
+  finish({rows:[{title:'测试剧 4K',url:'https://pan.quark.cn/s/completed'}]})
+  await new Promise(resolve=>setImmediate(resolve))
+  const complete=await service.search('测试剧')
+  assert.equal(complete.pending,false)
+  assert.equal(complete.results.length,1)
+  assert.equal(renders,1)
+})
+
+test('background share validation removes empty shares and retains reachable video shares without writing to the cloud', async () => {
+  const service=createResourceSearch({renderSearch:async()=>({rows:[]}),validateShare:async item=>item.url.endsWith('empty')?'invalid':'ready',fetcher:async url=>String(url).includes('pansou.app')?Response.json({code:0,data:{merged_by_type:{}}}):new Response(`<script id="__NEXT_DATA__">${JSON.stringify({props:{pageProps:{data:{data:[{content:'名称：测试剧 4K\nhttps://pan.quark.cn/s/empty'},{content:'名称：测试剧 1080P\nhttps://pan.quark.cn/s/video'}]}}}})}</script>`)})
+  const first=await service.search('测试剧')
+  assert.equal(first.pending,true)
+  await new Promise(resolve=>setImmediate(resolve))
+  const checked=await service.search('测试剧')
+  assert.equal(checked.pending,false)
+  assert.equal(checked.results.length,1)
+  assert.equal(checked.results[0].availability,'ready')
+  assert.ok(checked.results[0].url.endsWith('video'))
+})
 
 test('cached banner is drawn from the current aired quarter with meaningful votes, sorted by score', () => {
   const season = seasonAt(new Date('2026-10-24T12:00:00Z'))

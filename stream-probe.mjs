@@ -9,7 +9,6 @@ export function publicVideoUrl(value, base) {
     url.protocol !== 'https:' ||
     url.username ||
     url.password ||
-    (url.port && url.port !== '443') ||
     host === 'localhost' ||
     /\.(?:localhost|local|internal)$/.test(host) ||
     (isIP(host) &&

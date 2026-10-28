@@ -8,14 +8,19 @@ function baseTitle(value) {
   return titleKey(
     String(value || '')
       .replace(
-        /第\s*[\d一二两三四五六七八九十]+\s*[季期]|\b(?:season\s*\d+|\d+(?:st|nd|rd|th)\s+season|s\d{1,2})\b/gi,
+        /第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|\d+(?:st|nd|rd|th)\s+season|s\d{1,2})\b/gi,
         '',
       )
+      .replace(/\s*[（(](?:19|20)\d{2}[）)]\s*$/, '')
       .replace(
         /(?:\s*[（(](?:国语|日语|英语|粤语|中字|中文字幕|普通话|配音|字幕)[^）)]*[）)]|(?:国语|日语|英语|粤语|普通话)(?:版)?)$/g,
         '',
       ),
   )
+}
+export function workSearchTerms(query, aliases = []) {
+  const base = String(query).replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi, '').trim()
+  return [...new Set([query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(Boolean))].slice(0, 4)
 }
 export function matchesWork(candidate, query, { aliases = [], category } = {}) {
   const name = String(candidate.title || candidate.vod_name || '')
@@ -27,7 +32,7 @@ export function matchesWork(candidate, query, { aliases = [], category } = {}) {
   const kind = String(candidate.type || candidate.type_name || '')
   if (category === 'tv' && (
     /动漫|动画|動畫|综艺|綜藝|电影|電影|解说|解說|短剧|短劇/.test(kind) ||
-    !/电视剧|電視劇|连续剧|連續劇|国产剧|國產劇|欧美剧|歐美劇|美剧|英剧|日剧|韩剧|韓劇|日本剧|韩国剧|泰剧|泰国剧|海外剧|香港剧|台湾剧|台灣劇|港台剧|港剧|台剧|新马剧|新加坡剧|马来西亚剧|其他剧|series|drama/i.test(kind)
+    !/电视剧|電視劇|连续剧|連續劇|国产剧|國產劇|大陆剧|大陸劇|欧美剧|歐美劇|美剧|英剧|日剧|韩剧|韓劇|日本剧|韩国剧|泰剧|泰国剧|海外剧|香港剧|台湾剧|台灣劇|港台剧|港剧|台剧|新马剧|新加坡剧|马来西亚剧|其他剧|series|drama/i.test(kind)
   )) return false
   if (category === 'anime' && kind && !/动漫|动画|動畫|番剧|番劇/.test(kind))
     return false
@@ -37,8 +42,12 @@ export function matchesWork(candidate, query, { aliases = [], category } = {}) {
   )
     return false
   const targets = [query, ...aliases].filter(Boolean),
-    requestedSeason = targets.map(seasonNumber).find(Boolean),
-    actualSeason = seasonNumber(name)
+    requestedSeason = targets.map(seasonNumber).find(Boolean)
+  let actualSeason = seasonNumber(name), comparable = baseTitle(name)
+  if (!actualSeason && requestedSeason && targets.some(term => baseTitle(term) === comparable.replace(/\d{1,2}$/, ''))) {
+    actualSeason = Number(comparable.match(/\d{1,2}$/)?.[0]) || null
+    comparable = comparable.replace(/\d{1,2}$/, '')
+  }
   if ((requestedSeason || 1) !== (actualSeason || 1)) return false
-  return targets.some((term) => baseTitle(name) === baseTitle(term))
+  return targets.some((term) => comparable === baseTitle(term))
 }

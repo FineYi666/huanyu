@@ -27,7 +27,7 @@ export function extractQuarkResults(rows, sourceUrl) {
       content.match(
         /https:\/\/pan\.quark\.cn\/s\/[a-zA-Z0-9]+(?:\?[^\s"'<>]*)?/g,
       ) || []
-    for (const link of links) {
+    for (const link of links.slice(0, 160)) {
       try {
         const beforeLink = textOnly(
           content.slice(0, content.indexOf(link)).replace(/<[^>]*$/, ''),
@@ -43,36 +43,57 @@ export function extractQuarkResults(rows, sourceUrl) {
           .trim()
         const parsed = parseQuarkShare(
           link,
-          plain.match(
+          row.code || (!/[?&]pwd=/.test(link) && textOnly(content.slice(content.indexOf(link), content.indexOf(link) + 300)).match(
             /(?:提取码|访问码|密码)\s*[:：=]?\s*([a-zA-Z0-9]{4,8})/,
-          )?.[1] || '',
+          )?.[1]) || '',
         )
-        if (results.has(parsed.shareId)) continue
-        results.set(parsed.shareId, {
+        const candidate = {
           id: createHash('sha256')
             .update(parsed.shareId)
             .digest('hex')
             .slice(0, 16),
           title:
-            textOnly(row.title).slice(0, 180) ||
             nearestTitle ||
+            textOnly(row.title).slice(0, 180) ||
             plain
               .split('\n')
               .find((line) => line.trim())
               ?.replace(/^名称[:：]\s*/, '')
+              .replace(/https?:\/\/\S+/g, '').trim()
               .slice(0, 180) ||
             '夸克视频资源',
-          description: plain.slice(0, 850),
+          description: nearestTitle && !/^名称[:：]/.test(plain)
+            ? nearestTitle
+            : plain.replace(/https?:\/\/\S+/g, '').slice(0, 850),
           url: parsed.shareUrl,
           code: row.code || parsed.passcode,
           source: row.source || 'PanSearch',
           sourceUrl: row.sourceUrl || sourceUrl,
           updatedAt: row.time || null,
-        })
+        }
+        const previous = results.get(parsed.shareId)
+        const score = item => (resourceQualityHint(item).includes('4K') ? 200 : resourceQualityHint(item) ? 100 : 0) + Math.min(item.title.length, 90)
+        if (!previous || score(candidate) > score(previous))
+          results.set(parsed.shareId, {...candidate,code:candidate.code || previous?.code || ''})
       } catch {}
     }
   }
-  return [...results.values()].slice(0, 24)
+  return [...results.values()].sort((a,b) => Number(Boolean(resourceQualityHint(b))) - Number(Boolean(resourceQualityHint(a)))).slice(0, 300)
+}
+
+export function resourceRelevance(title, query) {
+  const name = normalized(title), target = normalized(query)
+  if (!target || !name.includes(target)) return 0
+  if (/课程|网课|数学|考研|电子书|教程|游戏资源|电影解说|混剪/.test(title) && !/课程|网课|数学|考研|电子书|教程|游戏/.test(query)) return 0
+  const at = name.indexOf(target), before = name.slice(0, at), after = name.slice(at + target.length)
+  const prefix = !before || /^(?:\d+|名称|电视剧|剧集|国产剧|大陆剧|电影|动漫|动画|\d{4})$/.test(before)
+  const suffix = !after || /^(?:\d{4}|全|第|全集|完结|未删减|国语|粤语|日语|英语|中字|中文|4k|2160|1080|720|高清|超清|蓝光|web|bd|hd|bluray|remux|s\d|season)/i.test(after)
+  return prefix && suffix ? 3 : 0
+}
+export function resourceQualityHint(item) {
+  const text = `${item.title} ${item.description || ''}`
+  return /(?:4\s*k|2160p)/i.test(text) ? '资源标注 4K'
+    : /1080p|1080[pi]|超清|蓝光/i.test(text) ? '资源标注 1080P / 蓝光' : ''
 }
 
 export function resourceQueries(query, aliases = []) {
@@ -134,9 +155,11 @@ export function createResourceSearch({
   fetcher = fetch,
   now = Date.now,
   renderSearch,
+  validateShare,
 } = {}) {
   const cache = new Map(),
     pending = new Map()
+  const availability = new Map()
   async function request(url) {
     const response = await fetcher(url, {
       redirect: 'error',
@@ -214,7 +237,7 @@ export function createResourceSearch({
     )
   }
   return {
-    async search(keyword, aliases = []) {
+    async search(keyword, aliases = [], { refresh = false } = {}) {
       const query = typeof keyword === 'string' ? keyword.trim() : ''
       if (query.length < 2 || query.length > 150)
         throw new Error('请输入 2 到 150 字的作品名称')
@@ -225,7 +248,7 @@ export function createResourceSearch({
       const key = JSON.stringify([query, queries])
       const previous = cache.get(key)
       if (
-        previous &&
+        previous && (!refresh || previous.value.pending) &&
         now() - previous.at < (previous.value.results.length ? 10 : 1) * 60000
       )
         return previous.value
@@ -294,35 +317,39 @@ export function createResourceSearch({
             })
           }
         }
+        let slowComplete = false, validating = Boolean(validateShare)
         const slowCollector = (async () => {
           for (const provider of [slowProvider]) await collectInto(provider, all)
-        })().catch(() => {})
+        })().catch(() => {}).finally(() => { slowComplete = true })
         await Promise.allSettled(
           fastProviders.map((provider) => collectInto(provider, all)),
         )
         const buildValue = (items, providerList) => {
           const unique = new Map()
           for (const item of items) {
-            if (
-              !queries.some((name) =>
-                normalized(item.title).includes(normalized(name)),
-              )
-            )
-              continue
+            const checked = availability.get(item.id)
+            if (checked?.expires > now() && checked.status === 'invalid') continue
+            const relevance = Math.max(...queries.map(name => resourceRelevance(item.title, name)))
+            if (!relevance) continue
             const match = resourceSeasonMatch(item.title, query)
             const existing = unique.get(item.id)
             if (existing) {
-              existing.sources = [...new Set([...existing.sources, item.source])]
-              if (!existing.code && item.code) existing.code = item.code
+              const sourceList = [...new Set([...existing.sources, item.source])]
+              const hint = resourceQualityHint(item)
+              if ((!existing.qualityHint && hint) || (hint.includes('4K') && !existing.qualityHint?.includes('4K')) || (item.title.length > existing.title.length && hint))
+                unique.set(item.id, {...existing,...item,sources:sourceList,match,relevance,qualityHint:hint,code:item.code || existing.code})
+              else { existing.sources = sourceList; if (!existing.code && item.code) existing.code = item.code }
               continue
             }
-            unique.set(item.id, { ...item, sources: [item.source], match })
+            unique.set(item.id, { ...item, sources: [item.source], match, relevance, qualityHint: resourceQualityHint(item), availability: checked?.expires > now() ? checked.status : 'unknown' })
           }
           const rank = { season: 0, related: 1, 'other-season': 2 }
           const results = [...unique.values()]
             .sort(
               (a, b) =>
-                rank[a.match] - rank[b.match] ||
+                b.relevance - a.relevance || rank[a.match] - rank[b.match] ||
+                (b.qualityHint?.includes('4K') ? 2 : Number(Boolean(b.qualityHint))) - (a.qualityHint?.includes('4K') ? 2 : Number(Boolean(a.qualityHint))) ||
+                Number(b.source === '夸克盘搜') - Number(a.source === '夸克盘搜') ||
                 String(b.updatedAt || '').localeCompare(
                   String(a.updatedAt || ''),
                 ),
@@ -336,24 +363,35 @@ export function createResourceSearch({
             sources: providerList
               .map((p) => {
                 const found = sources.find((s) => s.name === p.name)
-                return found || null
+                return found || {name:p.name,url:p.url,status:'loading',count:0}
               })
               .filter(Boolean),
             results,
+            pending: !slowComplete || validating,
             searchedAt: new Date(now()).toISOString(),
           }
         }
-        let value = buildValue(all, providers)
-        if (!value.results.length) {
-          // 快速源颗粒无收，等待慢源（Electron 渲染搜索）补全。
-          await slowCollector
-          value = buildValue(all, providers)
-        } else {
-          // 快速源已有结果立即返回；慢源完成后把结果并入缓存供下次使用。
-          void slowCollector.then(() => {
-            if (!all.length) return
+        const value = buildValue(all, providers)
+        if (!slowComplete || validating) {
+          // The UI polls partial results until the rendered provider finishes.
+          void slowCollector.then(async () => {
+            if (validateShare) {
+              const candidates = buildValue(all,providers).results.slice(0,12)
+              const validationDeadline = Date.now()+12000
+              let cursor = 0
+              await Promise.allSettled(Array.from({length:3},async()=>{
+                while(cursor<candidates.length && Date.now()<validationDeadline){
+                  const item=candidates[cursor++], known=availability.get(item.id)
+                  if(known?.expires>now())continue
+                  let status='unknown'
+                  try { status=await validateShare(item) } catch {}
+                  availability.set(item.id,{status,expires:now()+(status==='unknown'?60000:10*60000)})
+                }
+              }))
+              while(availability.size>300)availability.delete(availability.keys().next().value)
+            }
+            validating=false
             const refreshed = buildValue(all, providers)
-            if (!refreshed.results.length) return
             if (cache.size >= 80) cache.delete(cache.keys().next().value)
             cache.set(key, { at: now(), value: refreshed })
           })

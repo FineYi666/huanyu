@@ -2,6 +2,26 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createQuark } from '../quark.mjs'
 
+test('anonymous share inspection excludes empty shares, finds nested videos and never transfers files', async () => {
+  const original=globalThis.fetch
+  let empty=false
+  const calls=[]
+  globalThis.fetch=async(input,options)=>{
+    const u=new URL(input);calls.push(u.pathname)
+    assert.equal(options.headers.Cookie,'')
+    if(u.pathname.endsWith('/sharepage/token'))return Response.json({code:0,data:{stoken:'test-token'}})
+    if(u.pathname.endsWith('/sharepage/detail'))return Response.json({code:0,data:{list:empty?[]:u.searchParams.get('pdir_fid')==='0'?[{fid:'folder',file_name:'剧集',file_type:0}]:[{file_name:'01.mp4',file_type:1}]}})
+    throw new Error('Unexpected write API')
+  }
+  try{
+    const q=createQuark(()=> '')
+    assert.equal(await q.checkShare('https://pan.quark.cn/s/fixture'),'ready')
+    empty=true
+    assert.equal(await q.checkShare('https://pan.quark.cn/s/fixture'),'invalid')
+    assert.ok(calls.every(route=>/sharepage\/(token|detail)$/.test(route)))
+  }finally{globalThis.fetch=original}
+})
+
 test('Quark bridge discovers episodes, refreshes tokens and requires explicit per-episode save consent', async () => {
   const originalFetch = globalThis.fetch
   let cookie = ''

@@ -115,7 +115,13 @@ exports.run = async function run(encoded) {
               row.url,
             ),
           )
-          .slice(0, 2)
+          .filter(row => row.title.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase().includes(query.replace(/[^\p{L}\p{N}]/gu, '').toLowerCase()))
+          .filter(row => !/课程|教程|网课|数学|电子书/.test(row.title))
+          .sort((a,b) => {
+            const score = row => Number(/4k|2160|1080|蓝光/i.test(row.title))*4 + Number(/全\d+集|合集|全集/.test(row.title))*2 + Number(/4k|2160|1080|蓝光/i.test(row.description))
+            return score(b) - score(a)
+          })
+          .slice(0, 6)
         for (const row of details) {
           if (Date.now() - started > 34000) break
           try {

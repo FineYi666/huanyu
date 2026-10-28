@@ -2262,7 +2262,7 @@ export default function App() {
             </section>
           )}
           {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} />}
-          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} />}
+          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
               {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
