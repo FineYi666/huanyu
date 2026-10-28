@@ -73,7 +73,7 @@ export default function NewSeasonPage({
     [error, setError] = useState(''),
     [busy, setBusy] = useState(false),
     [filter, setFilter] = useState('all'),
-    [sort, setSort] = useState('date'),
+    [sort, setSort] = useState('rating'),
     [seasons, setSeasons] = useState<SeasonOption[]>([]),
     [selected, setSelected] = useState(''),
     [cross, setCross] = useState<SeasonTitle[] | null>(null),
