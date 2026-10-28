@@ -14,7 +14,7 @@ const numbers = {
 export function seasonNumber(value) {
   const text = String(value || '').normalize('NFKC')
   const token =
-    text.match(/第\s*([\d一二两三四五六七八九十]+)\s*[季期]/i)?.[1] ||
+    text.match(/第\s*([\d一二两三四五六七八九十]+)\s*(?:[季期]|部(?![队隊]))/i)?.[1] ||
     text.match(/(?:\bseason\s*|\bS)(\d{1,2})(?:\b|E\d)/i)?.[1] ||
     text.match(/\b(\d{1,2})(?:st|nd|rd|th)\s+season\b/i)?.[1]
   if (!token) return null
@@ -37,8 +37,8 @@ export function episodeLayout(episodes, title = '') {
     const explicit = Number.isInteger(episode.season) && episode.season > 0 ? episode.season : null
     const season = special ? null : explicit || seasonNumber(name) || fallback
     const group = special ? 'special' : season ? `season-${season}` : 'main'
-    const number = (counts.get(group) || 0) + 1
-    counts.set(group, number)
+    const number = Number.isInteger(episode.episodeNumber) && episode.episodeNumber > 0 ? episode.episodeNumber : (counts.get(group) || 0) + 1
+    counts.set(group, Math.max(counts.get(group) || 0,number))
     return {
       index,
       group,

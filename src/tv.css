@@ -25,6 +25,8 @@
 .web-source-card > .poster-art img { width: 100%; height: 100%; object-fit: cover; }
 .web-source-copy > .online-quality { display: inline-flex; margin: 5px 0 4px; padding: 4px 8px; border-radius: 5px; background: rgb(var(--accent-rgb) / .08); color: var(--secondary); font-size: 10px; }.web-source-copy > .online-quality.confirmed { color: var(--green); font-weight: 600; }
 .web-source-episodes .online-play-entry { display: inline-flex; align-items: center; gap: 5px; color: var(--green); }
+.web-source-episodes .online-save-button { display:inline-flex;align-items:center;gap:6px;color:var(--green); }.web-source-episodes .online-save-button[aria-pressed='true'] { background:rgb(var(--accent-rgb)/.14);border-color:var(--green); }
+.cinema-window-header > .online-library-favorite { width:auto;display:flex;align-items:center;gap:7px;font-size:12px;padding:8px 12px;border:1px solid #ffffff28;border-radius:10px; }.cinema-window-header > .online-library-favorite.active { color:var(--green);background:rgb(var(--accent-rgb)/.12); }
 .online-episode-grid { max-height: 200px; overflow-y: auto; padding: 4px; margin: 8px -4px 0; }
 .online-no-results { padding: 28px 10px; text-align: center; }.online-no-results h3 { font-size: 14px; }.online-no-results p { font-size: 12px; color: var(--secondary); margin-top: 8px; }
 .quark-results-block { border-top: 1px solid var(--border); margin-top: 25px; padding-top: 22px; }.quark-result-list { max-height: 570px; overflow-y: auto; padding-right: 6px; }.quark-pending { display: flex; align-items: center; gap: 7px; color: var(--secondary); font-size: 11px; margin: 15px 0 0; }.quark-quality-hint { color: var(--green) !important; font-weight: 600; }

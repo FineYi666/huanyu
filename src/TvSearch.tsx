@@ -5,14 +5,17 @@ import type { WebSourceResult } from './OnlinePlayer'
 import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import QuarkResults from './QuarkResults'
 import { api } from './api'
-import type { AppState } from './types'
+import type { AppState, Media } from './types'
 
 type SourceStatus = { name: string; status: string; count: number; message?: string }
-export default function TvSearch({ query, onQuery, onImport, onImported }: {
+export default function TvSearch({ query, onQuery, onImport, onImported, media, onLibraryChange, onPlaySaved }: {
   query: string
   onQuery: (query: string) => void
   onImport: () => void
   onImported: (state: AppState, ids: string[], count: number) => void
+  media: Media[]
+  onLibraryChange: (state:AppState)=>void
+  onPlaySaved: (state:AppState,id:string,episodeId:string)=>void
 }) {
   const quark = useQuarkSearch()
   const [importing, setImporting] = useState('')
@@ -85,7 +88,7 @@ export default function TvSearch({ query, onQuery, onImport, onImported }: {
     {(busy || error || results) && <div className="tv-search-results">
       {searched && <div className="tv-result-heading"><h3>“{searched}”的播放资源</h3>{stale && <span>关键词或画质条件已更改，点击搜索更新结果</span>}</div>}
       {!!sources.length && <div className="tv-source-status">{sources.map(source => <span key={source.name} title={source.message} className={source.status === 'error' ? 'unavailable' : ''}>{source.name}<small>{source.count ? `${source.count} 条线路` : source.status === 'error' ? '暂不可用' : source.message || '未收录'}</small></span>)}</div>}
-      <OnlineSources results={results} busy={busy} error={error} onInvalid={(resultId, episodeId) => setResults(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
+      <OnlineSources results={results} busy={busy} error={error} library={media} onLibraryChange={onLibraryChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setResults(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
     </div>}
   </section>

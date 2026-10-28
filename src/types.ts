@@ -47,6 +47,7 @@ export interface Media {
   source: Source
   episodes: Episode[]
   favorite?: boolean
+  online?: { preferredId: string; sourceName: string; road: string; quality?: string }
   addedAt: number
   shareUrl?: string
   shareId?: string

@@ -5,10 +5,12 @@ import {
   LoaderCircle,
   Radio,
   RefreshCw,
+  Heart,
 } from 'lucide-react'
 import Dialog from './ui'
 import CinemaVideo, { type PlaybackQuality } from './CinemaVideo'
 import { api } from './api'
+import type { Media } from './types'
 
 export type WebEpisode = {
   id: string
@@ -31,6 +33,8 @@ export type WebSourceResult = {
   height?: number
   width?: number
   quality?: string
+  libraryKey?: string
+  mediaId?: string
   episodes: WebEpisode[]
 }
 export default function OnlinePlayer({
@@ -39,12 +43,20 @@ export default function OnlinePlayer({
   initialEpisode,
   onClose,
   onInvalid,
+  libraryMedia,
+  onFavorite,
+  onProgress,
+  autoNext = true,
 }: {
   results: WebSourceResult[]
   initialResult: WebSourceResult
   initialEpisode: WebEpisode
   onClose: () => void
   onInvalid: (resultId: string, episodeId: string) => void
+  libraryMedia?: Media
+  onFavorite?: () => void
+  onProgress?: () => void
+  autoNext?: boolean
 }) {
   const [result, setResult] = useState(initialResult),
     [episode, setEpisode] = useState(initialEpisode),
@@ -67,6 +79,28 @@ export default function OnlinePlayer({
   invalid.current = onInvalid
   const fullscreenLeft = useRef(0)
   const stage = useRef<HTMLDivElement>(null)
+  const lastSaved = useRef(0)
+  const point = useRef<{episodeId:string;time:number;duration:number}|null>(null)
+  const progressCallback = useRef(onProgress)
+  progressCallback.current = onProgress
+  function capture() {
+    const el=video.current
+    if(libraryMedia && el && Number.isFinite(el.duration) && el.duration>0 && el.currentTime>=.2)
+      point.current={episodeId:el.dataset.episodeId || episode.id,time:Math.min(el.currentTime,el.duration),duration:el.duration}
+  }
+  function saveProgress() {
+    capture()
+    if(libraryMedia && point.current)void api('/progress',{mediaId:libraryMedia.id,...point.current}).then(()=>progressCallback.current?.()).catch(()=>{})
+  }
+  const saveCallback=useRef(saveProgress)
+  saveCallback.current=saveProgress
+  useEffect(()=>()=>saveCallback.current(),[])
+  function selectEpisode(next:WebEpisode) {
+    saveProgress()
+    point.current=null
+    setStream(null)
+    setEpisode(next)
+  }
   async function toggleFullscreen() {
     if (document.fullscreenElement) await document.exitFullscreen()
     else await stage.current?.requestFullscreen()
@@ -88,6 +122,7 @@ export default function OnlinePlayer({
       return
     }
     if (Date.now() - fullscreenLeft.current < 350) return
+    saveProgress()
     onClose()
   }
   const index = result.episodes.findIndex((item) => item.id === episode.id)
@@ -100,11 +135,12 @@ export default function OnlinePlayer({
     setError('')
     setStream(null)
     setQualities([])
-    resume.current = lineResume.current
+    const saved=libraryMedia?.progress?.[episode.id]
+    resume.current = lineResume.current || (saved && saved.time < saved.duration-10 ? {time:saved.time,paused:false,rate:1} : null)
     lineResume.current = null
     api<{ url: string; format: string; qualities?: PlaybackQuality[] }>(
       '/web-stream',
-      { resultId: result.id, episodeId: episode.id },
+      { resultId: result.id, episodeId: episode.id,mediaId:libraryMedia?.id },
     )
       .then((value) => {
         if (current === revision.current) {
@@ -143,6 +179,7 @@ export default function OnlinePlayer({
     )
     const next = matching || item.episodes[0]
     if (next) {
+      saveProgress()
       const element = video.current
       lineResume.current =
         matching && element
@@ -152,6 +189,7 @@ export default function OnlinePlayer({
               rate: element.playbackRate,
             }
           : null
+      setStream(null)
       setResult(item)
       setEpisode(next)
     }
@@ -166,7 +204,7 @@ export default function OnlinePlayer({
   }
   return (
     <Dialog
-      title={`${result.title} · ${episode.title}`}
+      title={`${libraryMedia?.title || result.title} · ${episode.title}`}
       onClose={close}
       hideHeader
       className="online-cinema-dialog"
@@ -176,7 +214,7 @@ export default function OnlinePlayer({
           <ArrowLeft size={19} />
         </button>
         <div>
-          <strong>{result.title}</strong>
+          <strong>{libraryMedia?.title || result.title}</strong>
           <span>
             {episode.season ? `第${episode.season}季 · ` : ''}
             {episode.title}
@@ -186,6 +224,7 @@ export default function OnlinePlayer({
           <Radio size={13} />
           {result.sourceName}
         </span>
+        {libraryMedia && onFavorite && <button className={`online-library-favorite ${libraryMedia.favorite?'active':''}`} aria-label={`${libraryMedia.favorite?'取消收藏':'收藏'}${libraryMedia.title}`} aria-pressed={Boolean(libraryMedia.favorite)} onClick={onFavorite}><Heart size={16} fill={libraryMedia.favorite?'currentColor':'none'} /><span>{libraryMedia.favorite?'已收藏':'收藏'}</span></button>}
       </div>
       <div className="online-cinema-layout">
         <div className="online-cinema-main">
@@ -193,12 +232,15 @@ export default function OnlinePlayer({
             {stream && (
               <CinemaVideo
                 ref={video}
-                title={result.title}
+                title={libraryMedia?.title || result.title}
                 episodeTitle={`${episode.title} · ${result.road}`}
                 src={stream.url}
                 format={stream.format}
                 autoPlay={!resume.current?.paused}
                 playsInline
+                data-episode-id={episode.id}
+                onTimeUpdate={()=>{capture();if(Date.now()-lastSaved.current>5000){lastSaved.current=Date.now();saveProgress()}}}
+                onPause={saveProgress}
                 qualities={qualities}
                 qualityId={stream.id}
                 onFullscreen={()=>{void toggleFullscreen().catch(()=>setError('当前窗口暂未允许全屏'))}}
@@ -230,17 +272,18 @@ export default function OnlinePlayer({
                 }}
                 onPrevious={
                   index > 0
-                    ? () => setEpisode(result.episodes[index - 1])
+                    ? () => selectEpisode(result.episodes[index - 1])
                     : undefined
                 }
                 onNext={
                   index < result.episodes.length - 1
-                    ? () => setEpisode(result.episodes[index + 1])
+                    ? () => selectEpisode(result.episodes[index + 1])
                     : undefined
                 }
                 onEnded={() => {
-                  if (result.episodes[index + 1])
-                    setEpisode(result.episodes[index + 1])
+                  saveProgress()
+                  if (autoNext && result.episodes[index + 1])
+                    selectEpisode(result.episodes[index + 1])
                 }}
               />
             )}
@@ -320,7 +363,7 @@ export default function OnlinePlayer({
                 title={`来源标记：${item.originalTitle}`}
                 className={item.id === episode.id ? 'active' : ''}
                 aria-pressed={item.id === episode.id}
-                onClick={() => setEpisode(item)}
+                onClick={() => selectEpisode(item)}
               >
                 <span>{String(item.number).padStart(2, '0')}</span>
                 {item.title}

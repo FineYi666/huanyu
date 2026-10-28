@@ -60,6 +60,7 @@ import GamesPage, {
 import type { AppState, Episode, Game, Media } from './types'
 import MovieDiscovery from './MovieDiscovery'
 import TvSearch from './TvSearch'
+import SavedOnlinePlayer from './SavedOnlinePlayer'
 import { mediaCategory, type MediaCategory } from '../media-category.mjs'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
 import DeepSeekSettings from './DeepSeekSettings'
@@ -158,6 +159,7 @@ function Cover({
           src={media.cover}
           alt={media.title}
           loading="lazy"
+          referrerPolicy="no-referrer"
           onError={() => setFailed(true)}
         />
       ) : (
@@ -585,6 +587,7 @@ function DetailDialog({
           </p>
           <h2>{media.title}</h2>
           <div className="detail-meta">
+            {media.online && <span>{media.online.sourceName} · {media.online.road}</span>}
             {media.year && <span>{media.year}</span>}
             <span>{media.genre || '未分类'}</span>
             <span>
@@ -2262,7 +2265,7 @@ export default function App() {
             </section>
           )}
           {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} />}
-          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
+          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} media={media} onLibraryChange={data=>{setState(data);notify('收藏状态已更新，剧集已保存在追剧片库')}} onPlaySaved={(data,id,episodeId)=>{setState(data);const episode=data.media.find(item=>item.id===id)?.episodes.find(item=>item.id===episodeId);if(episode)setPlaying({mediaId:id,episode})}} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
               {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
@@ -2329,6 +2332,7 @@ export default function App() {
                     <option value="all">全部来源</option>
                     <option value="local">本地视频</option>
                     <option value="quark">夸克网盘</option>
+                    <option value="url">在线片源</option>
                     {page !== 'library' && page !== 'tv' && (
                       <option value="sample">示例片单</option>
                     )}
@@ -2382,6 +2386,8 @@ export default function App() {
                                 ? '片单'
                                 : m.source === 'local'
                                   ? '本地'
+                                  : m.source === 'url'
+                                    ? '在线'
                                   : '夸克'}
                             </span>
                             {m.rating && (
@@ -2451,7 +2457,9 @@ export default function App() {
                                   ? '已完结'
                                   : m.source === 'local'
                                     ? '本地收藏'
-                                    : '云端资源'}
+                                    : m.source === 'url'
+                                      ? '在线追剧'
+                                      : '云端资源'}
                             </span>
                           </div>
                           {layout === 'list' && (
@@ -2675,7 +2683,7 @@ export default function App() {
           }}
         />
       )}
-      {playing && playerMedia && (
+      {playing && playerMedia && (playerMedia.source==='url' && playerMedia.online ? <SavedOnlinePlayer media={playerMedia} initialEpisode={playing.episode} autoNext={state!.settings.autoNext} onFavorite={()=>void favorite(playerMedia)} onProgress={refresh} onClose={()=>{setPlaying(null);refresh()}} /> : (
         <Player
           media={playerMedia}
           initialEpisode={playing.episode}
@@ -2692,7 +2700,7 @@ export default function App() {
           onProgress={refresh}
           notify={notify}
         />
-      )}
+      ))}
       {settings && state && (
         <SettingsDialog
           state={state}

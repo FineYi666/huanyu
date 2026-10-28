@@ -23,7 +23,8 @@ import { createResourceSearch } from './resource-search.mjs'
 import { createGameResourceSearch } from './game-resources.mjs'
 import { createMovieCatalog } from './movie-catalog.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
-import { createWebSources } from './web-sources.mjs'
+import { createWebSources, onlineEpisodeId } from './web-sources.mjs'
+import { saveOnlineMedia, publicOnlineSources, syncOnlineEpisodes, fetchOnlineCover } from './online-library.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 import { publicVideoUrl } from './stream-probe.mjs'
 import { episodeLayout } from './episode-seasons.mjs'
@@ -145,7 +146,7 @@ function autoMetadata(ids) {
     : 0
 }
 function publicMedia(media) {
-  const { stoken, passcode, metadataInfo, subtitleFiles, ...clean } = media
+  const { stoken, passcode, metadataInfo, subtitleFiles, webSources: privateWebSources, ...clean } = media
   const layout = episodeLayout(media.episodes, media.title)
   return {
     ...clean,
@@ -940,14 +941,55 @@ const server = http.createServer(async (req, res) => {
       webSources.report(input.resultId, input.episodeId)
       return json(res, { ok: true })
     }
+    if (route === '/api/web-library' && req.method === 'POST') {
+      const input = await body(req)
+      const selected = webSources.snapshot(input.resultId)
+      if(input.episodeId && !selected.episodes.some(ep=>ep.id===input.episodeId))return json(res,{error:'此片源没有对应集数，请重新选择'},400)
+      const selectedEpisode = selected.episodes.find(ep=>ep.id===input.episodeId) || selected.episodes[0]
+      const initial = state.media.find(media=>media.id===selected.libraryKey)
+      let cover
+      if ((!initial?.cover || initial.cover===selected.cover) && !initial?.cover?.startsWith('/covers/') && !initial?.manual?.cover)
+        cover = await fetchOnlineCover(selected.cover)
+      const existing = state.media.find(media=>media.id===selected.libraryKey)
+      const media = saveOnlineMedia(selected,webSources.relatedSnapshots(input.resultId),existing,input.favorite)
+      if (cover && !existing?.manual?.cover && (!existing?.cover || existing.cover===selected.cover)) {
+        const name = `${selected.libraryKey}.${cover.extension}`
+        await writeFile(path.join(DATA,'covers',name),cover.bytes)
+        media.cover = `/covers/${name}`
+      }
+      // Recheck after the optional cover write, so simultaneous saves dedupe.
+      const index = state.media.findIndex(item=>item.id===media.id)
+      if(index<0)state.media.unshift(media)
+      else state.media[index] = saveOnlineMedia(selected,media.webSources,state.media[index],input.favorite)
+      if(index>=0 && cover && !state.media[index].manual?.cover && !state.media[index].cover?.startsWith('/covers/'))state.media[index].cover=media.cover
+      await save()
+      return json(res,{id:media.id,episodeId:onlineEpisodeId(selectedEpisode),...publicState()})
+    }
+    const onlineRoute = /^\/api\/media\/([^/]+)\/online$/.exec(route)
+    if (onlineRoute && req.method==='GET') {
+      const media=state.media.find(item=>item.id===onlineRoute[1] && item.source==='url' && item.webSources?.length)
+      if(!media)return json(res,{error:'在线剧集记录不存在，请重新加入片库'},404)
+      return json(res,{results:publicOnlineSources(media),preferredId:media.online.preferredId})
+    }
     // 网页源在线播放代理：m3u8/mp4 直链经幻屿转发（支持 Range 与 HLS）。
     if (route === '/api/web-stream' && req.method === 'POST') {
       const input = await body(req)
       if(typeof input.resultId!=='string'||typeof input.episodeId!=='string')return json(res,{error:'请从已校验的搜索结果中选择剧集'},400)
-      const source = await webSources.resolve(input.resultId, input.episodeId)
+      let source
+      if(input.mediaId) {
+        const media=state.media.find(item=>item.id===input.mediaId && item.source==='url')
+        const record=media?.webSources?.find(item=>item.id===input.resultId)
+        if(!record)return json(res,{error:'收藏的播放线路不存在，请重新选择资源'},404)
+        try {
+          source=await webSources.resolveStored(record,input.episodeId)
+          media.online={...media.online,preferredId:record.id,sourceName:record.sourceName,road:record.road,quality:record.quality}
+        } finally { syncOnlineEpisodes(media);await save() }
+      } else source = await webSources.resolve(input.resultId, input.episodeId)
       const token = randomUUID()
       streamCache.set(token, {
         ...source,
+        mediaId:input.mediaId,
+        episodeId:input.episodeId,
         expires: Date.now() + 4 * 3600000,
       })
       const qualities=(source.variants?.length ? source.variants : [source]).map((variant,index)=>{const variantToken=index===0?token:randomUUID();if(index!==0)streamCache.set(variantToken,{...variant,headers:source.headers,web:true,expires:Date.now()+4*3600000});return{id:`quality-${index}`,label:qualityLabel(resolutionHeight(variant.width,variant.height)),url:`/api/stream/${variantToken}`,format:variant.format}})
@@ -1271,7 +1313,7 @@ const server = http.createServer(async (req, res) => {
     }
     if (route.startsWith('/covers/')) {
       if (
-        !/^\/covers\/(?:[a-f0-9]{24}|seasonal-\d{1,12})\.(jpg|png|webp)$/.test(
+        !/^\/covers\/(?:(?:online-)?[a-f0-9]{24}|seasonal-\d{1,12})\.(jpg|png|webp)$/.test(
           route,
         )
       )

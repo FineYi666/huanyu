@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto'
-import { matchesWork, workSearchTerms } from './media-match.mjs'
+import { matchesWork, workSearchTerms, canonicalWorkKey } from './media-match.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from './stream-probe.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
@@ -37,6 +37,7 @@ const SOURCES = [
 ]
 const idFor = (value) =>
   createHash('sha256').update(value).digest('hex').slice(0, 24)
+export const onlineEpisodeId = episode => `online-ep-${episode.season || 1}-${episode.number}`
 async function mapLimit(items, limit, task) {
   let index = 0
   const output = []
@@ -197,9 +198,14 @@ export function createWebSources({
                       const item = {
                         id: `web-${source.id}-${vod.vod_id}-${idFor(road.name)}`,
                         sourceId: source.id,
+                        providerItemId: String(vod.vod_id),
                         sourceName: source.name,
                         road: road.name,
                         title: String(detail.vod_name).trim(),
+                        category: options.category || 'anime',
+                        libraryKey: `online-${idFor(`${options.category || 'anime'}/${canonicalWorkKey(detail.vod_name)}`)}`,
+                        description: String(detail.vod_content || detail.vod_blurb || '').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').trim().slice(0,1500),
+                        genre: String(detail.vod_class || '').slice(0,80),
                         cover: String(detail.vod_pic || vod.vod_pic || ''),
                         year: String(detail.vod_year || vod.vod_year || ''),
                         remarks: String(detail.vod_remarks || ''),
@@ -311,9 +317,47 @@ export function createWebSources({
     if (records.get(resultId)?.item.episodes.some((ep) => ep.id === episodeId))
       failed.set(`${resultId}/${episodeId}`, now() + 120000)
   }
+  async function resolveStored(item, episodeId) {
+    let episode = item.episodes.find(ep => ep.id === episodeId)
+    if (!episode) throw new Error('此播放线路没有对应集数，请切换其他线路')
+    const attempt = async () => {
+      const value = await probe({url:episode.url,headers:item.headers || {},web:true},{fetcher})
+      const tier = resolutionHeight(value.width,value.height)
+      if (tier && tier < item.minHeight) throw new Error('本集画质低于保存时的超清要求，请选择其他线路')
+      if (tier) { item.width=value.width;item.height=value.height;item.quality=qualityLabel(tier) }
+      item.checkedAt=new Date(now()).toISOString()
+      return {...value,headers:item.headers || {},web:true}
+    }
+    try { return await attempt() }
+    catch {
+      const provider = providers.find(provider=>provider.id===item.sourceId)
+      if (!provider || !item.providerItemId) throw new Error('这条收藏线路暂不可用，请重新搜索并选择其他片源')
+      const value = await api(provider.anime ? `${provider.api}get_detail?vod_id=${encodeURIComponent(item.providerItemId)}` : `${provider.api}?ac=detail&ids=${encodeURIComponent(item.providerItemId)}`)
+      const detail = provider.anime ? value.info : value.list?.find(vod=>String(vod.vod_id)===item.providerItemId)
+      if (!detail || !matchesWork(detail,item.title,{category:item.category})) throw new Error('原片源已下架或作品信息发生变化，请重新选择资源')
+      const road = parsePlayRoads(detail).find(road=>road.name===item.road)
+      if (!road) throw new Error('原播放线路已下架，请切换其他线路')
+      item.episodes = road.episodes.map(ep=>({...ep,id:onlineEpisodeId(ep)}))
+      episode = item.episodes.find(ep=>ep.id===episodeId)
+      if (!episode) throw new Error('原片源已移除此集，请切换其他线路')
+      item.checkedAt = new Date(now()).toISOString()
+      return attempt()
+    }
+  }
   return {
     search,
     resolve,
+    resolveStored,
+    snapshot(resultId) {
+      const record = records.get(resultId)
+      if (!record || record.expires < now()) throw new Error('搜索记录已过期，请重新搜索后加入片库')
+      return structuredClone(record.item)
+    },
+    relatedSnapshots(resultId) {
+      const selected = records.get(resultId)
+      if (!selected || selected.expires < now()) return []
+      return [...records.values()].filter(record=>record.expires>now() && record.item.libraryKey===selected.item.libraryKey).slice(0,8).map(record=>structuredClone(record.item))
+    },
     report,
     alternate: async (keyword, excludeSourceId, options) => {
       const value = await search(keyword, options)

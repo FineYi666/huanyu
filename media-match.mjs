@@ -18,6 +18,9 @@ function baseTitle(value) {
       ),
   )
 }
+export function canonicalWorkKey(title) {
+  return `${baseTitle(title)}/${seasonNumber(title) || 1}`
+}
 export function workSearchTerms(query, aliases = []) {
   const base = String(query).replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi, '').trim()
   return [...new Set([query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(Boolean))].slice(0, 4)
