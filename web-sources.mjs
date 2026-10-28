@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto'
 import { matchesWork } from './media-match.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from './stream-probe.mjs'
+import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 // Search -> selected work -> playback roads follows Kazumi's documented rule flow.
 // giriGiriLove endpoints/field mappings: Predidit/KazumiRules (MIT), see licenses.
 const SOURCES = [
@@ -24,7 +25,7 @@ const SOURCES = [
   {
     id: 'ff',
     name: '非凡资源',
-    api: 'https://api.ffzyonline.com/api.php/provide/vod',
+    api: 'https://api.ffzyapi.com/api.php/provide/vod',
   },
   {
     id: 'zy360',
@@ -49,10 +50,15 @@ async function mapLimit(items, limit, task) {
 }
 export function parsePlayRoads(vod) {
   const names = String(vod.vod_play_from || '').split('$$$')
+  const episodeNumber = title => Number(String(title).match(/^(?:第\s*|ep?\s*)?(\d{1,3})\s*(?:集|话|話)?$/i)?.[1]) || null
   return String(vod.vod_play_url || '')
     .split('$$$')
     .flatMap((group, index) => {
-      const episodes = group.split('#').flatMap((entry) => {
+      const entries = group.split('#')
+      const season = seasonNumber(vod.vod_name)
+      const firstNumber = entries.map(entry => episodeNumber(entry.split('$')[0])).find(Boolean) || 1
+      const offset = season > 1 ? firstNumber - 1 : 0
+      const episodes = entries.flatMap((entry, position) => {
         const split = entry.indexOf('$')
         if (split < 0) return []
         try {
@@ -62,6 +68,7 @@ export function parsePlayRoads(vod) {
             {
               id: idFor(url),
               originalTitle: entry.slice(0, split).trim(),
+              number: Math.max(1, (episodeNumber(entry.slice(0, split)) || position + 1 + offset) - offset),
               url,
             },
           ]
@@ -70,18 +77,16 @@ export function parsePlayRoads(vod) {
         }
       })
       if (!episodes.length) return []
-      const season = seasonNumber(vod.vod_name)
       return [
         {
           name:
             { chs: '简体字幕', cht: '繁体字幕' }[names[index]] ||
             names[index] ||
             `线路 ${index + 1}`,
-          episodes: episodes.map((episode, i) => ({
+          episodes: episodes.map((episode) => ({
             ...episode,
-            title: `第${i + 1}集`,
+            title: `第${episode.number}集`,
             season,
-            number: i + 1,
           })),
         },
       ]
@@ -129,12 +134,13 @@ export function createWebSources({
     const aliases = (options.aliases || [])
         .filter((x) => typeof x === 'string' && x.trim())
         .slice(0, 2),
-      key = JSON.stringify([query, aliases, options.category])
+      minHeight = [0, 720, 1080, 1440, 2160].includes(options.minHeight) ? options.minHeight : 1080,
+      key = JSON.stringify([query, aliases, options.category, minHeight])
     if (pending.has(key)) return pending.get(key)
     const operation = (async () => {
       const statuses = await Promise.all(
         providers
-          .filter((source) => !source.anime || options.category !== 'movie')
+          .filter((source) => !source.anime || !options.category || options.category === 'anime')
           .map(async (source) => {
             const found = [],
               deadline = AbortSignal.timeout(20000)
@@ -156,16 +162,18 @@ export function createWebSources({
                     : `${source.api}?ac=detail&wd=${encodeURIComponent(term)}`,
                   deadline,
                 )
-                const candidates =
-                    (source.anime ? data.info?.rows : data.list) || [],
-                  matched = candidates
-                    .filter((vod) =>
-                      matchesWork(vod, query, {
-                        aliases,
-                        category: options.category,
-                      }),
-                    )
-                    .slice(0, 4)
+                const candidates = (source.anime ? data.info?.rows : data.list) || []
+                const matches = vod => matchesWork(vod, query, { aliases, category: options.category })
+                // Some catalogs put short dramas before the exact title on page two.
+                // Check a bounded number of pages without relaxing title/category rules.
+                if (!source.anime && !candidates.some(matches)) {
+                  for (let page = 2; page <= Math.min(Number(data.pagecount) || 1, 3); page++) {
+                    const next = await api(`${source.api}?ac=detail&wd=${encodeURIComponent(term)}&pg=${page}`, deadline)
+                    candidates.push(...(Array.isArray(next.list) ? next.list : []))
+                    if (candidates.some(matches)) break
+                  }
+                }
+                const matched = candidates.filter(matches).slice(0, 4)
                 await mapLimit(matched, 3, async (vod) => {
                   try {
                     const detail = source.anime
@@ -207,10 +215,18 @@ export function createWebSources({
                         )
                           continue
                         try {
-                          await probe(
+                          const checked = await probe(
                             { url: episode.url, headers: item.headers },
                             { fetcher: boundedFetch },
                           )
+                          const tier = resolutionHeight(checked.width, checked.height)
+                          if (tier && tier < minHeight) continue
+                          item.height = checked.height || 0
+                          item.width = checked.width || 0
+                          item.qualityHeight = tier
+                          item.quality = tier ? qualityLabel(tier) : '清晰度待确认'
+                          item.resolutionSource = checked.resolutionSource || ''
+                          item.minHeight = minHeight
                           item.checkedAt = new Date(now()).toISOString()
                           item.checkedEpisode = episode.id
                           verified = true
@@ -258,7 +274,7 @@ export function createWebSources({
             .flatMap((source) => source.results)
             .map((item) => [item.id, publicItem(item)]),
         ).values(),
-      ].filter((item) => item.episodes.length)
+      ].filter((item) => item.episodes.length).sort((a,b) => (b.qualityHeight || 0) - (a.qualityHeight || 0))
       return {
         results,
         sources: statuses.map(({ results, ...source }) => source),
@@ -276,9 +292,12 @@ export function createWebSources({
     const source = { url: episode.url, headers: record.item.headers, web: true }
     try {
       const verified = await probe(source, { fetcher })
+      const tier = resolutionHeight(verified.width, verified.height)
+      if (tier && tier < record.item.minHeight)
+        throw Object.assign(new Error(`本集仅提供 ${verified.height}P，低于当前超清筛选要求，请换线路或关闭超清优先后重搜`), { code: 'LOW_RESOLUTION' })
       return { ...source, ...verified }
     } catch (error) {
-      failed.set(`${resultId}/${episodeId}`, now() + 120000)
+      if (error.code !== 'LOW_RESOLUTION') failed.set(`${resultId}/${episodeId}`, now() + 120000)
       throw error
     }
   }
