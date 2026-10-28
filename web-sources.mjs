@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { matchesWork, workSearchTerms, canonicalWorkKey } from './media-match.mjs'
-import { requestSite } from './resource-sites.mjs'
+import { requestSite, normalizeSearchSites } from './resource-sites.mjs'
 import { parsePageSources, pageTitle } from './page-sources.mjs'
 import { resourceRelevance } from './resource-search.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
@@ -8,7 +8,10 @@ import { probeStream, publicVideoUrl } from './stream-probe.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 // Search -> selected work -> playback roads follows Kazumi's documented rule flow.
 // giriGiriLove endpoints/field mappings: Predidit/KazumiRules (MIT), see licenses.
+export const AGE_SOURCE = { id: 'age', name: 'AGE动漫', api: 'https://www.agedm.io/', anime: true, page: true,
+  site: normalizeSearchSites([{name:'AGE动漫',type:'page',url:'https://www.agedm.io/search?query={query}'}],true)[0] }
 const SOURCES = [
+  AGE_SOURCE,
   { id: 'subo', name: '速播资源', api: 'https://subocj.com/api.php/provide/vod' },
   { id: 'hn', name: '红牛资源', api: 'https://www.hongniuzy2.com/api.php/provide/vod' },
   {
@@ -38,6 +41,16 @@ const SOURCES = [
     api: 'https://360zy5.com/api.php/provide/vod',
   },
 ]
+export function sourcePriority(source, category) {
+  if (category !== 'anime') return 0
+  if (/https:\/\/(?:www\.)?ddys\.(?:app|info|one)(?:\/|$)/i.test(source.pageUrl || source.api || '') || /低端影视|低调影视|DDYS/i.test(source.sourceName || source.name || '')) return 0
+  const name=source.sourceName || source.name || ''
+  if ((source.sourceId || source.id) === 'giri' || /giriGiriLove/i.test(name)) return 1
+  if ((source.sourceId || source.id) === 'age' || /AGE动漫/i.test(name)) return 2
+  if ((source.sourceId || source.id) === 'subo' || /速播/.test(name)) return 20
+  if ((source.sourceId || source.id) === 'hn' || /红牛/.test(name)) return 21
+  return 10
+}
 const idFor = (value) =>
   createHash('sha256').update(value).digest('hex').slice(0, 24)
 export const onlineEpisodeId = episode => `online-ep-${episode.season || 1}-${episode.number}`
@@ -120,22 +133,38 @@ export function createWebSources({
     const found=[],seen=new Set()
     for(const term of workSearchTerms(query,aliases).slice(0,2)){
       const search=await searchPage(source.site,term)
-      const candidates=(search.links||[]).filter(link=>{try{return new URL(link.url).origin===new URL(source.api).origin && resourceRelevance(pageTitle(link.title),term)}catch{return false}}).slice(0,3)
+      const candidates=[...new Map((search.links||[]).flatMap(link=>{
+        try {
+          const url=new URL(link.url)
+          if(source.id==='age'&&url.hostname==='www.agedm.io')url.protocol='https:'
+          return url.origin===new URL(source.api).origin && resourceRelevance(pageTitle(link.title),term) ? [[url.href,{...link,url:url.href}]] : []
+        }catch{return []}
+      })).values()].slice(0,3)
       for(const candidate of candidates){
         if(seen.has(candidate.url))continue;seen.add(candidate.url)
         const page=await readPage(source.site,candidate.url)
-        for(const road of parsePageSources(page,category)){
+        for(const road of parsePageSources(page,category).slice(0,source.id==='age'?2:8)){
           if(!matchesWork({title:road.title,type:road.category==='movie'?'电影':road.category==='tv'?'电视剧':'动漫'},query,{aliases,category}))continue
           const episode=road.episodes[0]
-          try{const checked=await probe({url:episode.url,headers:road.headers,web:true},{fetcher});const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
-            const item={...road,id:`web-${source.id}-${idFor(`${page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:checked.width,height:checked.height,quality:qualityLabel(height),checkedAt:new Date(now()).toISOString(),checkedEpisode:episode.id}
+          try{const checked=await probeEpisode(source,road,episode);const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
+            const item={...road,id:`web-${source.id}-${idFor(`${road.pageUrl || page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:road.pageUrl || page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:checked.width,height:checked.height,quality:qualityLabel(height),checkedAt:new Date(now()).toISOString(),checkedEpisode:episode.id}
             records.set(item.id,{item,expires:now()+20*60000});found.push(item)
-          }catch{}
+          }catch(error){if(error.needsVerification)throw error}
         }
       }
       if(found.length)break
     }
     return found
+  }
+  async function probeEpisode(provider,item,episode) {
+    if(episode.pageUrl && provider?.id==='age' && !episode.url){
+      const page=await readPage(provider.site,episode.pageUrl)
+      for(const url of [...(page.videos||[]),...(page.media||[])].filter(url=>/\.(?:m3u8|mp4|webm)(?:$|\?)/i.test(url))){
+        try{const headers=page.mediaHeaders?.[url] || {Referer:episode.pageUrl};const checked=await probe({url,headers,web:true},{fetcher});episode.url=url;item.headers=headers;return checked}catch{}
+      }
+      throw new Error('AGE 本集播放地址暂不可用，请换线路')
+    }
+    return probe({url:episode.url,headers:item.headers,web:true},{fetcher})
   }
   async function api(url, signal) {
     if(providerList().some(source=>source.custom && new URL(url).origin===new URL(source.api).origin && new URL(url).pathname===new URL(source.api).pathname)) {
@@ -307,6 +336,7 @@ export function createWebSources({
                 matchedCount,
                 message: source.custom?String(error.message).slice(0,140):'来源响应超时或暂不可用',
                 needsVerification:Boolean(error.needsVerification),
+                siteId:error.siteId,
                 results: found,
               }
             }
@@ -328,10 +358,10 @@ export function createWebSources({
               return [item.id, publicItem(item)]
             }),
         ).values(),
-      ].filter((item) => item.episodes.length).sort((a,b) => (b.qualityHeight || 0) - (a.qualityHeight || 0))
+      ].filter((item) => item.episodes.length).sort((a,b) => sourcePriority(a,options.category) - sourcePriority(b,options.category) || (b.qualityHeight || 0) - (a.qualityHeight || 0))
       return {
         results,
-        sources: statuses.map(({ results, ...source }) => source),
+        sources: statuses.map(({ results, ...source }) => source).sort((a,b)=>sourcePriority(a,options.category)-sourcePriority(b,options.category)),
         searchedAt: new Date(now()).toISOString(),
       }
     })().finally(() => pending.delete(key))
@@ -343,9 +373,9 @@ export function createWebSources({
       episode = record?.item.episodes.find((ep) => ep.id === episodeId)
     if (!episode || record.expires < now())
       throw new Error('片源记录已过期，请重新搜索')
-    const source = { url: episode.url, headers: record.item.headers, web: true }
     try {
-      const verified = await probe(source, { fetcher })
+      const verified = await probeEpisode(providerList().find(provider=>provider.id===record.item.sourceId),record.item,episode)
+      const source = { url: episode.url, headers: record.item.headers, web: true }
       const tier = resolutionHeight(verified.width, verified.height)
       if (tier && tier < record.item.minHeight)
         throw Object.assign(new Error(`本集仅提供 ${verified.height}P，低于当前超清筛选要求，请换线路或关闭超清优先后重搜`), { code: 'LOW_RESOLUTION' })
@@ -363,7 +393,7 @@ export function createWebSources({
     let episode = item.episodes.find(ep => ep.id === episodeId)
     if (!episode) throw new Error('此播放线路没有对应集数，请切换其他线路')
     const attempt = async () => {
-      const value = await probe({url:episode.url,headers:item.headers || {},web:true},{fetcher})
+      const value = await probeEpisode(providerList().find(provider=>provider.id===item.sourceId),item,episode)
       const tier = resolutionHeight(value.width,value.height)
       if (tier && tier < item.minHeight) throw new Error('本集画质低于保存时的超清要求，请选择其他线路')
       if (tier) { item.width=value.width;item.height=value.height;item.quality=qualityLabel(tier) }

@@ -4,11 +4,12 @@ import OnlineSources from './OnlineSources'
 import type { WebSourceResult } from './OnlinePlayer'
 import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import QuarkResults from './QuarkResults'
+import SiteVerificationNotice, { type VerificationSource } from './SiteVerificationNotice'
 import SearchSitesButton from './SearchSitesButton'
 import { api } from './api'
 import type { AppState, Media } from './types'
 
-type SourceStatus = { name: string; status: string; count: number; message?: string }
+type SourceStatus = VerificationSource & { name: string; status: string; count: number; message?: string }
 export default function TvSearch({ query, onQuery, onImport, onImported, media, onLibraryChange, onPlaySaved }: {
   query: string
   onQuery: (query: string) => void
@@ -92,6 +93,7 @@ export default function TvSearch({ query, onQuery, onImport, onImported, media, 
       {!!sources.length && <div className="tv-source-status">{sources.map(source => <span key={source.name} title={source.message} className={source.status === 'error' ? 'unavailable' : ''}>{source.name}<small>{source.count ? `${source.count} 条线路` : source.status === 'error' ? '暂不可用' : source.message || '未收录'}</small></span>)}</div>}
       <OnlineSources results={results} busy={busy} error={error} library={media} onLibraryChange={onLibraryChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setResults(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
+      <SiteVerificationNotice sources={sources} onVerified={()=>void search()} />
     </div>}
   </section>
 }

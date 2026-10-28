@@ -16,6 +16,7 @@ import { api } from './api'
 import type { WebSourceResult } from './OnlinePlayer'
 import OnlineSources from './OnlineSources'
 import QuarkResults from './QuarkResults'
+import SiteVerificationNotice, { type VerificationSource } from './SiteVerificationNotice'
 import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import type { MediaCategory } from '../media-category.mjs'
 import Dialog from './ui'
@@ -391,7 +392,7 @@ export default function NewSeasonPage({
                     onClick={() => onResource(item)}
                   >
                     <Cloud size={15} />
-                    获取夸克资源
+                    查找播放资源
                     <ArrowUpRight size={14} />
                   </button>
                   <CatalogFavoriteButton subjectId={item.id} title={item.title} media={media} onChange={onFavoriteChange}/></div>
@@ -481,19 +482,21 @@ export function ResourceSearch({
   const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [webError, setWebError] = useState('')
+  const [verificationSources,setVerificationSources]=useState<VerificationSource[]>([])
   const webRevision=useRef(0)
   async function loadWebSources(keyword: string) {
     const revision=++webRevision.current
     setWebBusy(true)
     setWebError('')
+    setVerificationSources([])
     try {
-      const value = await api<{ results: WebSourceResult[]; sources?:{needsVerification?:boolean;message?:string}[] }>(
+      const value = await api<{ results: WebSourceResult[]; sources?:VerificationSource[] }>(
         '/web-sources/search',
         { keyword, subjectId:subject.id, category:subject.category||'anime' },
       )
       if(revision!==webRevision.current)return
       setWebSources(value.results || [])
-      if(!value.results?.length&&value.sources?.some(source=>source.needsVerification))setWebError('网站需要访问验证。点击“搜索网站”，在对应来源中选择“验证 / 登录”，完成后重新搜索。')
+      setVerificationSources(value.sources || [])
     } catch (e) {
       if(revision===webRevision.current){setWebError((e as Error).message);setWebSources([])}
     } finally {
@@ -591,8 +594,9 @@ export function ResourceSearch({
         同时搜索内置来源与已启用的自定义网站，
         自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
-      <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <OnlineSources results={webSources} busy={webBusy} error={webError} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
+      <SiteVerificationNotice sources={verificationSources} onVerified={()=>void loadWebSources(query)} />
+      <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <div className="resource-fallback-actions">
         <button
           className="button outline"

@@ -190,7 +190,7 @@ export default function HeroCarousel({
                 ) : (
                   <Play size={14} fill="currentColor" />
                 )}
-                {slide.score ? '查找夸克资源' : '探索这个故事'}
+                {slide.score ? '查找播放资源' : '探索这个故事'}
                 <ArrowUpRight size={16} />
               </button>
               {slide.sourceUrl && (

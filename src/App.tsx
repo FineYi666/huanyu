@@ -2573,7 +2573,7 @@ export default function App() {
       )}
       {resourceTarget && (
         <Dialog
-          title={resourceTarget.category === 'movie' ? '查找电影片源' : resourceTarget.category === 'tv' ? '查找电视剧片源' : '查找夸克资源'}
+          title={resourceTarget.category === 'movie' ? '查找电影片源' : resourceTarget.category === 'tv' ? '查找电视剧片源' : '查找动漫片源'}
           className="resource-dialog"
           onClose={() => {
             if (!resourceBusy) setResourceTarget(null)

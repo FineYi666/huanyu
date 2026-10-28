@@ -534,6 +534,7 @@ const server = http.createServer(async (req, res) => {
       return json(res,publicState())
     }
     if(route==='/api/search-sites' && req.method==='GET')return json(res,{sites:state.settings.searchSites || []})
+    if(route==='/api/search-sites/verification' && req.method==='GET')return json(res,{sites:siteRenderer.verificationStatus()})
     if(route==='/api/search-sites' && req.method==='POST') {
       const input=await body(req)
       state.settings.searchSites=normalizeSearchSites(input.sites,true)

@@ -21,6 +21,7 @@ export type WebEpisode = {
 }
 export type WebSourceResult = {
   id: string
+  category?: 'anime' | 'movie' | 'tv'
   sourceId: string
   sourceName: string
   road: string

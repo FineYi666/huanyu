@@ -78,7 +78,7 @@ await cp(path.join(root,'node_modules','mp4box'),path.join(out,'node_modules','m
 for(const file of ['ffmpeg.exe.LICENSE','ffmpeg.exe.README'])await cp(path.join(root,'node_modules','ffmpeg-static',file),path.join(out,'runtime',file))
 await cp(path.join(root,'node_modules','ffprobe-static','LICENSE'),path.join(out,'runtime','ffprobe.LICENSE'))
 let notices = '幻屿 - Third-party software notices\n\n'
-notices += '\nKazumiRules API endpoint/field mapping reference (giriGiriLove rule), https://github.com/Predidit/KazumiRules ; independent implementation following https://kazumi.app/docs/rules/introduce-rules/ .\n' + await readFile(path.join(root,'licenses','KAZUMI-RULES-LICENSE.txt'),'utf8')
+notices += '\nKazumiRules references: giriGiriLove API endpoint/fields and AGE search/episode flow, https://github.com/Predidit/KazumiRules ; independent implementation following https://kazumi.app/docs/rules/introduce-rules/ .\n' + await readFile(path.join(root,'licenses','KAZUMI-RULES-LICENSE.txt'),'utf8')
 notices += '\nFFmpeg / FFprobe are separate GPL executables used for local subtitle demuxing. Build information, license and source references are provided in runtime/ffmpeg.exe.README and runtime/ffmpeg.exe.LICENSE. Upstream: https://ffmpeg.org/ ; binaries: https://github.com/eugeneware/ffmpeg-static ; Windows source builds: https://www.gyan.dev/ffmpeg/builds/ .\n'
 notices +=
   '\n==================== qrcode-generator 2.0.4 (MIT) ====================\n\n' +
