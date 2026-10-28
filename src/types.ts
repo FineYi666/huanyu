@@ -19,7 +19,7 @@ declare global {
   }
 }
 
-export type Source = 'local' | 'quark' | 'url' | 'sample'
+export type Source = 'local' | 'quark' | 'url' | 'sample' | 'catalog'
 export interface Episode {
   id: string
   name: string
@@ -84,6 +84,7 @@ export interface Game {
   metadataError?: string
 }
 export interface AppSettings {
+  searchSites?: {id:string;name:string;type:'quark'|'vod'|'web'|'page';url:string;enabled:boolean}[]
   showSamples: boolean
   autoNext: boolean
   subtitlesEnabled: boolean

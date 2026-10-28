@@ -35,23 +35,32 @@ import { createEmbeddedSubtitles, subtitleContainer } from './embedded-subtitles
 import { createGameEntry, fetchGameMetadata, downloadGameCover, launchGame, parseLaunchArgs, searchSteamApps, fetchSteamAppDetail } from './games.mjs'
 import { prepareAppData } from './app-data.mjs'
 import { runtimeVersion } from './runtime-version.mjs'
+import { setCatalogFavorite, inheritCatalogFavorite } from './catalog-favorites.mjs'
+import { normalizeSearchSites, searchQuarkSite } from './resource-sites.mjs'
+import { createSiteRenderer } from './site-renderer.mjs'
 
 const ROOT = path.dirname(fileURLToPath(import.meta.url))
 const buildId = await runtimeVersion(ROOT)
 const movieCatalog = await createMovieCatalog(ROOT)
 const gameResources = createGameResourceSearch()
-const importSubject = (id) => typeof id === 'string' && id.startsWith('douban-')
-  ? movieCatalog.findSubject(id) : recommendations.findSubject(id)
+const importSubject = async (id) => {
+  const known=state?.media.find(item=>item.subjectId===id && item.source==='catalog')
+  const subject=await Promise.resolve(typeof id==='string'&&id.startsWith('douban-')?movieCatalog.findSubject(id):recommendations.findSubject(id)).catch(()=>null)
+  return subject || (known && {id:known.subjectId,title:known.title,subtitle:known.subtitle,description:known.description,image:known.cover,score:Number(known.rating)||undefined,category:known.category,year:known.year,genre:known.genre,sourceUrl:known.posterSourceUrl})
+}
 const DATA = await prepareAppData(ROOT)
+const siteRenderer = createSiteRenderer(ROOT,process.env.YINGYU_SITE_DATA_DIR || DATA)
 const PORT = Number(process.env.YINGYU_PORT || 4317)
 const DEV = process.argv.includes('--dev')
 const localBrowser = createLocalBrowser()
 const publicShares = createQuark(() => '', {requestTimeout:5000})
 const resourceSearch = createResourceSearch({
+  getSites:()=>state?.settings.searchSites || [],
+  searchSite:searchQuarkSite,
   renderSearch: createRenderedSearch(ROOT),
   validateShare: item => publicShares.checkShare(item.url,item.code),
 })
-const webSources = createWebSources()
+const webSources = createWebSources({getSites:()=>state?.settings.searchSites || [],readPage:(site,url,options)=>siteRenderer.read(site,url,options),searchPage:(site,query)=>siteRenderer.search(site,query)})
 await mkdir(DATA, { recursive: true })
 await mkdir(path.join(DATA, 'covers'), { recursive: true })
 const recommendations = await createSeasonalService({ root: ROOT, data: DATA })
@@ -515,6 +524,30 @@ const server = http.createServer(async (req, res) => {
         ),
       )
     }
+    if(route==='/api/catalog/favorite' && req.method==='POST') {
+      const input=await body(req)
+      const saved=state.media.find(item=>item.source!=='sample' && item.subjectId===input.subjectId)
+      const subject=input.favorite===false&&saved?{id:saved.subjectId,title:saved.title}:await importSubject(input.subjectId)
+      if(typeof input.favorite!=='boolean')return json(res,{error:'请选择收藏状态'},400)
+      setCatalogFavorite(state.media,subject,input.favorite)
+      await save()
+      return json(res,publicState())
+    }
+    if(route==='/api/search-sites' && req.method==='GET')return json(res,{sites:state.settings.searchSites || []})
+    if(route==='/api/search-sites' && req.method==='POST') {
+      const input=await body(req)
+      state.settings.searchSites=normalizeSearchSites(input.sites,true)
+      await save()
+      return json(res,publicState())
+    }
+    const verifySite=/^\/api\/search-sites\/([a-f0-9]{16})\/verify$/.exec(route)
+    if(verifySite&&req.method==='POST') {
+      await body(req)
+      const site=state.settings.searchSites?.find(site=>site.id===verifySite[1]&&site.type==='page')
+      if(!site)return json(res,{error:'请先保存影视网站设置'},404)
+      await siteRenderer.verify(site)
+      return json(res,{started:true})
+    }
     if (route === '/api/shutdown' && req.method === 'POST') {
       const input = await body(req)
       if (
@@ -651,6 +684,7 @@ const server = http.createServer(async (req, res) => {
           state.media.find((item) => item.id === id),
           subject,
         )
+        inheritCatalogFavorite(state.media.find(item=>item.id===id),state.media)
         ids.push(id)
       }
       const metadataQueued = subject ? 0 : autoMetadata(ids)
@@ -725,6 +759,7 @@ const server = http.createServer(async (req, res) => {
         state.media.unshift(media)
       }
       attachSeasonalMetadata(existing || media, subject)
+      inheritCatalogFavorite(existing || media,state.media)
       const metadataQueued = subject ? 0 : autoMetadata([media.id])
       await save()
       return json(res, {
@@ -855,7 +890,10 @@ const server = http.createServer(async (req, res) => {
           media.category = input.category
           media.manual = { ...media.manual, category: true }
         }
-        if (typeof input.favorite === 'boolean') media.favorite = input.favorite
+        if (typeof input.favorite === 'boolean') {
+          media.favorite = input.favorite
+          if(media.subjectId)setCatalogFavorite(state.media,{id:media.subjectId,title:media.title},input.favorite)
+        }
         for (const key of ['title', 'description', 'genre'])
           if (typeof input[key] === 'string' && input[key].trim()) {
             media[key] = input[key]
@@ -934,7 +972,8 @@ const server = http.createServer(async (req, res) => {
         return json(res, { error: '请输入 2 个字以上的名称' }, 400)
       const subject = await Promise.resolve(importSubject(input.subjectId)).catch(() => null)
       const aliases = subject && [subject.title, subject.subtitle].includes(keyword) ? [subject.title, subject.subtitle] : []
-      return json(res, await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime', minHeight: input.minHeight }))
+      const value = await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime', minHeight: input.minHeight, cover: aliases.length ? subject.image : undefined })
+      return json(res, { ...value, results: value.results.map(item => ({ ...item, cover: posters.localize(item.cover) })) })
     }
     if (route === '/api/web-sources/report' && req.method === 'POST') {
       const input = await body(req)

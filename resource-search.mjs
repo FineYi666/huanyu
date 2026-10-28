@@ -156,6 +156,8 @@ export function createResourceSearch({
   now = Date.now,
   renderSearch,
   validateShare,
+  getSites=()=>[],
+  searchSite,
 } = {}) {
   const cache = new Map(),
     pending = new Map()
@@ -245,7 +247,8 @@ export function createResourceSearch({
         query,
         Array.isArray(aliases) ? aliases.slice(0, 3) : [],
       )
-      const key = JSON.stringify([query, queries])
+      const customSites=getSites().filter(site=>site.enabled && ['quark','web'].includes(site.type))
+      const key = JSON.stringify([query, queries,customSites])
       const previous = cache.get(key)
       if (
         previous && (!refresh || previous.value.pending) &&
@@ -295,6 +298,12 @@ export function createResourceSearch({
             url: `https://pansou.app/?q=${encodeURIComponent(queries[0])}`,
             run: () => collect(pansou),
           },
+          ...customSites.map(site=>({
+            name:`自定义 · ${site.name}`,
+            url:site.url.replaceAll('{query}',encodeURIComponent(queries[0])),
+            external:site.type==='web',
+            run:()=>site.type==='web'?[]:searchSite({...site,name:`自定义 · ${site.name}`},queries[0],{fetcher}),
+          })),
         ]
         const providers = [slowProvider, ...fastProviders]
         const collectInto = async (provider, sink) => {
@@ -304,7 +313,8 @@ export function createResourceSearch({
             sources.push({
               name: provider.name,
               url: provider.url,
-              status: 'ok',
+              status: provider.external?'external':'ok',
+              ...(provider.external?{message:'打开网站搜索页'}:!values.length&&customSites.some(site=>`自定义 · ${site.name}`===provider.name)?{message:'网页暂无可读取分享，可打开网站搜索页'}:{}),
               count: values.length,
             })
           } catch (error) {

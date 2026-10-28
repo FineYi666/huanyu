@@ -1,5 +1,8 @@
 import { createHash } from 'node:crypto'
 import { matchesWork, workSearchTerms, canonicalWorkKey } from './media-match.mjs'
+import { requestSite } from './resource-sites.mjs'
+import { parsePageSources, pageTitle } from './page-sources.mjs'
+import { resourceRelevance } from './resource-search.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from './stream-probe.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
@@ -103,11 +106,43 @@ export function createWebSources({
   now = Date.now,
   providers = SOURCES,
   probe = probeStream,
+  getSites=()=>[],
+  readPage,
+  searchPage,
 } = {}) {
+  const providerList=()=>[...providers,...getSites().filter(site=>site.enabled && ['vod','page'].includes(site.type)).map(site=>({id:`custom-${site.id}`,name:`自定义 · ${site.name}`,api:site.url,custom:true,page:site.type==='page',site}))]
+  const sourceUrl=(source,params)=>{const url=new URL(source.api);for(const [key,value]of Object.entries(params))url.searchParams.set(key,String(value));return url.href}
   const records = new Map(),
     pending = new Map(),
     failed = new Map()
+  async function pageResults(source,query,aliases,category,minHeight) {
+    if(!readPage||!searchPage)throw new Error('网页影视源需要桌面版')
+    const found=[],seen=new Set()
+    for(const term of workSearchTerms(query,aliases).slice(0,2)){
+      const search=await searchPage(source.site,term)
+      const candidates=(search.links||[]).filter(link=>{try{return new URL(link.url).origin===new URL(source.api).origin && resourceRelevance(pageTitle(link.title),term)}catch{return false}}).slice(0,3)
+      for(const candidate of candidates){
+        if(seen.has(candidate.url))continue;seen.add(candidate.url)
+        const page=await readPage(source.site,candidate.url)
+        for(const road of parsePageSources(page,category)){
+          if(!matchesWork({title:road.title,type:road.category==='movie'?'电影':road.category==='tv'?'电视剧':'动漫'},query,{aliases,category}))continue
+          const episode=road.episodes[0]
+          try{const checked=await probe({url:episode.url,headers:road.headers,web:true},{fetcher});const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
+            const item={...road,id:`web-${source.id}-${idFor(`${page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:checked.width,height:checked.height,quality:qualityLabel(height),checkedAt:new Date(now()).toISOString(),checkedEpisode:episode.id}
+            records.set(item.id,{item,expires:now()+20*60000});found.push(item)
+          }catch{}
+        }
+      }
+      if(found.length)break
+    }
+    return found
+  }
   async function api(url, signal) {
+    if(providerList().some(source=>source.custom && new URL(url).origin===new URL(source.api).origin && new URL(url).pathname===new URL(source.api).pathname)) {
+      const value=JSON.parse((await requestSite(url,{fetcher,signal})).text)
+      if(!Array.isArray(value.list))throw new Error('该地址不是兼容的影视采集接口')
+      return value
+    }
     const r = await fetcher(url, {
       signal: signal
         ? AbortSignal.any([signal, AbortSignal.timeout(10000)])
@@ -138,11 +173,11 @@ export function createWebSources({
         .filter((x) => typeof x === 'string' && x.trim())
         .slice(0, 2),
       minHeight = [0, 720, 1080, 1440, 2160].includes(options.minHeight) ? options.minHeight : 1080,
-      key = JSON.stringify([query, aliases, options.category, minHeight])
+      key = JSON.stringify([query, aliases, options.category, minHeight,options.cover,getSites()])
     if (pending.has(key)) return pending.get(key)
     const operation = (async () => {
       const statuses = await Promise.all(
-        providers
+        providerList()
           .filter((source) => !source.anime || !options.category || options.category === 'anime')
           .map(async (source) => {
             const found = [],
@@ -156,11 +191,12 @@ export function createWebSources({
                   : deadline,
               })
             try {
+              if(source.page){found.push(...await pageResults(source,query,aliases,options.category||'anime',minHeight));return{name:source.name,status:'ok',count:found.length,results:found,message:found.length?'网页片源已校验':'未发现匹配且可播放的网页片源'}}
               for (const term of workSearchTerms(query, aliases)) {
                 const data = await api(
                   source.anime
                     ? `${source.api}get_list?vod_name=${encodeURIComponent(term)}&offset=0&limit=20`
-                    : `${source.api}?ac=detail&wd=${encodeURIComponent(term)}`,
+                    : sourceUrl(source,{ac:'detail',wd:term}),
                   deadline,
                 )
                 const candidates = (source.anime ? data.info?.rows : data.list) || []
@@ -169,7 +205,7 @@ export function createWebSources({
                 // Check a bounded number of pages without relaxing title/category rules.
                 if (!source.anime && !candidates.some(matches)) {
                   for (let page = 2; page <= Math.min(Number(data.pagecount) || 1, 3); page++) {
-                    const next = await api(`${source.api}?ac=detail&wd=${encodeURIComponent(term)}&pg=${page}`, deadline)
+                    const next = await api(sourceUrl(source,{ac:'detail',wd:term,pg:page}), deadline)
                     candidates.push(...(Array.isArray(next.list) ? next.list : []))
                     if (candidates.some(matches)) break
                   }
@@ -263,13 +299,14 @@ export function createWebSources({
                 message: found.length ? '' : rejectedQuality ? '找到作品，但画质低于当前筛选要求' : matchedCount ? '找到作品，但线路暂无法播放' : '未收录匹配作品',
                 results: found,
               }
-            } catch {
+            } catch (error) {
               return {
                 name: source.name,
                 status: 'error',
                 count: found.length,
                 matchedCount,
-                message: '来源响应超时或暂不可用',
+                message: source.custom?String(error.message).slice(0,140):'来源响应超时或暂不可用',
+                needsVerification:Boolean(error.needsVerification),
                 results: found,
               }
             }
@@ -284,7 +321,12 @@ export function createWebSources({
         ...new Map(
           statuses
             .flatMap((source) => source.results)
-            .map((item) => [item.id, publicItem(item)]),
+            .map((item) => {
+              // A trusted catalog poster also works when the source site's images
+              // require its browser session. Keep saved records consistent with UI.
+              if (options.cover) item.cover = options.cover
+              return [item.id, publicItem(item)]
+            }),
         ).values(),
       ].filter((item) => item.episodes.length).sort((a,b) => (b.qualityHeight || 0) - (a.qualityHeight || 0))
       return {
@@ -330,9 +372,10 @@ export function createWebSources({
     }
     try { return await attempt() }
     catch {
-      const provider = providers.find(provider=>provider.id===item.sourceId)
+      const provider = providerList().find(provider=>provider.id===item.sourceId)
       if (!provider || !item.providerItemId) throw new Error('这条收藏线路暂不可用，请重新搜索并选择其他片源')
-      const value = await api(provider.anime ? `${provider.api}get_detail?vod_id=${encodeURIComponent(item.providerItemId)}` : `${provider.api}?ac=detail&ids=${encodeURIComponent(item.providerItemId)}`)
+      if(provider.page){const page=await readPage(provider.site,item.pageUrl);const road=parsePageSources(page,item.category).find(road=>road.pageNodeId===item.pageNodeId && road.pageSeason===item.pageSeason);if(!road)throw new Error('网站已更换播放列表，请重新搜索');const saved=item.episodes[0]?.id.startsWith('online-ep-');item.episodes=road.episodes.map(ep=>({...ep,id:saved?onlineEpisodeId(ep):ep.id}));episode=item.episodes.find(ep=>ep.id===episodeId);if(!episode)throw new Error('网站已移除此集，请切换片源');return attempt()}
+      const value = await api(provider.anime ? `${provider.api}get_detail?vod_id=${encodeURIComponent(item.providerItemId)}` : sourceUrl(provider,{ac:'detail',ids:item.providerItemId}))
       const detail = provider.anime ? value.info : value.list?.find(vod=>String(vod.vod_id)===item.providerItemId)
       if (!detail || !matchesWork(detail,item.title,{category:item.category})) throw new Error('原片源已下架或作品信息发生变化，请重新选择资源')
       const road = parsePlayRoads(detail).find(road=>road.name===item.road)

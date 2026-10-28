@@ -2,14 +2,16 @@ import { useEffect, useMemo, useState } from 'react'
 import { ArrowLeft, ArrowRight, ArrowUpRight, Clapperboard, Film, LoaderCircle, Search, Star } from 'lucide-react'
 import { api } from './api'
 import Poster from './Poster'
-import type { Media } from './types'
+import type { AppState, Media } from './types'
+import CatalogFavoriteButton from './CatalogFavoriteButton'
 import type { SeasonTitle } from './NewSeasonPage'
 import { filterMovies, type RecommendedMovie } from '../movie-filters.mjs'
 
 type Catalog = { movies: RecommendedMovie[]; updatedAt?: string; genres: string[] }
-export default function MovieDiscovery({ query, onClearSearch, onResource, onOpen, media }: {
+export default function MovieDiscovery({ query, onClearSearch, onResource, onOpen, media, onFavoriteChange }: {
   query: string; onClearSearch: () => void; onResource: (movie: SeasonTitle) => void;
   onOpen: (id: string) => void; media: Media[];
+  onFavoriteChange:(state:AppState)=>void;
 }) {
   const [catalog, setCatalog] = useState<Catalog | null>(null)
   const [error, setError] = useState('')
@@ -70,7 +72,7 @@ export default function MovieDiscovery({ query, onClearSearch, onResource, onOpe
     {filtered.length > 0 ? <>
       <div className="discovery-grid">
         {filtered.slice((currentPage - 1) * pageSize, currentPage * pageSize).map((movie) => {
-          const linked = media.find((item) => item.source !== 'sample' && item.subjectId === movie.id)
+          const linked = media.find((item) => !['sample','catalog'].includes(item.source) && item.subjectId === movie.id)
           return <article className="discovery-movie" key={movie.id}>
             <button className="discovery-poster" onClick={() => selectMovie(movie)} aria-label={`查找${movie.title}的片源`}>
               <Poster src={movie.cover} title={movie.title} /><span className="discovery-rank">#{String(movie.rank).padStart(2, '0')}</span><span className="discovery-score"><Star size={12} fill="currentColor" />{movie.score.toFixed(1)}</span>
@@ -78,7 +80,7 @@ export default function MovieDiscovery({ query, onClearSearch, onResource, onOpe
             </button>
             <div className="discovery-movie-meta"><span>{movie.year}</span><span>{movie.genres.slice(0, 2).join(' / ')}</span></div>
             <h3>{movie.title}</h3><p className="discovery-original" title={movie.foreignTitle}>{movie.foreignTitle || movie.title}</p>
-            <div className="discovery-movie-actions"><button onClick={() => linked ? onOpen(linked.id) : selectMovie(movie)}>{linked ? '打开已收藏影片' : '查找播放资源'}<ArrowUpRight size={13} /></button><a href={movie.url} target="_blank" rel="noreferrer" aria-label={`${movie.title}的豆瓣资料`}>资料</a></div>
+            <div className="discovery-movie-actions"><button onClick={() => linked ? onOpen(linked.id) : selectMovie(movie)}>{linked ? '打开已入库影片' : '查找播放资源'}<ArrowUpRight size={13} /></button><CatalogFavoriteButton subjectId={movie.id} title={movie.title} media={media} onChange={onFavoriteChange}/><a href={movie.url} target="_blank" rel="noreferrer" aria-label={`${movie.title}的豆瓣资料`}>资料</a></div>
           </article>
         })}
       </div>

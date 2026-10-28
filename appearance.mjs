@@ -9,10 +9,12 @@ export const SKIN_IDS = [
   'custom',
 ]
 import { normalizeSubtitleStyle } from './subtitle-style.mjs'
+import { normalizeSearchSites } from './resource-sites.mjs'
 
 // Older libraries get appearance defaults without changing media or playback preferences.
 export function normalizeSettings(input = {}) {
   return {
+    searchSites: normalizeSearchSites(input.searchSites),
     showSamples:
       typeof input.showSamples === 'boolean' ? input.showSamples : true,
     autoNext: typeof input.autoNext === 'boolean' ? input.autoNext : true,

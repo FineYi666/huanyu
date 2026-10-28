@@ -4,6 +4,7 @@ import OnlineSources from './OnlineSources'
 import type { WebSourceResult } from './OnlinePlayer'
 import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import QuarkResults from './QuarkResults'
+import SearchSitesButton from './SearchSitesButton'
 import { api } from './api'
 import type { AppState, Media } from './types'
 
@@ -80,6 +81,7 @@ export default function TvSearch({ query, onQuery, onImport, onImported, media, 
           <label htmlFor="tv-keyword">找一部想看的电视剧</label>
           <div><Search size={18} /><input id="tv-keyword" value={query} onChange={event => onQuery(event.target.value)} placeholder="输入剧名，如：琅琊榜、庆余年 第二季" maxLength={80} /><button className="button primary" type="submit" disabled={!!importing}>{busy || quark.loading ? <LoaderCircle size={16} className="spin" /> : <Search size={16} />} 搜索播放资源</button></div>
         </form>
+        <SearchSitesButton />
         <div className="tv-import-hint"><span>已经有夸克分享链接？</span><button type="button" onClick={onImport}><Cloud size={15} /> 导入电视剧 <ArrowUpRight size={14} /></button></div>
         <label className="tv-quality-filter"><input type="checkbox" checked={uhd} onChange={event => setUhd(event.target.checked)} /> 超清优先 <span>1080P / 2K / 4K</span></label>
         <p className="tv-search-note">{uhd ? '过滤已知低于 1080P 的线路；未能识别分辨率的片源标注「待确认」。' : '显示所有通过播放校验的画质，超清排在前面。'} 默认播放最高可用画质。</p>

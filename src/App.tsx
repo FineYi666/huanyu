@@ -61,6 +61,7 @@ import type { AppState, Episode, Game, Media } from './types'
 import MovieDiscovery from './MovieDiscovery'
 import TvSearch from './TvSearch'
 import SavedOnlinePlayer from './SavedOnlinePlayer'
+import SearchSitesButton from './SearchSitesButton'
 import { mediaCategory, type MediaCategory } from '../media-category.mjs'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
 import DeepSeekSettings from './DeepSeekSettings'
@@ -102,6 +103,7 @@ type Page =
 type ImportMode = 'local' | 'quark'
 const genres = ['全部', '奇幻', '治愈', '日常', '热血', '悬疑', '电影']
 const sourceNames = {
+  catalog: '作品收藏',
   sample: '示例片单',
   local: '本地资源',
   quark: '夸克网盘',
@@ -1773,9 +1775,9 @@ export default function App() {
     try {
       setState(
         await api<AppState>(
-          `/media/${media.id}`,
-          { favorite: !media.favorite },
-          'PATCH',
+          media.source==='catalog'?'/catalog/favorite':`/media/${media.id}`,
+          { favorite: !media.favorite,subjectId:media.subjectId },
+          media.source==='catalog'?'POST':'PATCH',
         ),
       )
       notify(media.favorite ? '已从收藏中移除' : '已收藏，留给下一次相遇')
@@ -1810,7 +1812,11 @@ export default function App() {
     }
   }
   const media = state?.media || []
-  const real = media.filter((m) => m.source !== 'sample')
+  const real = media.filter((m) => !['sample','catalog'].includes(m.source))
+  function openMedia(item:Media) {
+    if(item.source==='catalog')setResourceTarget({id:item.subjectId || '',title:item.title,subtitle:item.subtitle || '',description:item.description || '',image:item.cover || '',category:categoryOf(item),score:Number(item.rating) || undefined,sourceUrl:item.posterSourceUrl})
+    else setSelected(item.id)
+  }
   const visible = useMemo(() => {
     let items = media.filter((m) =>
       page === 'library'
@@ -1821,6 +1827,7 @@ export default function App() {
             ? latestProgress(m)
             : m.source !== 'sample' || state?.settings.showSamples,
     )
+    items=items.filter(item=>item.source!=='catalog' || (page==='favorites' && !media.some(linked=>linked.subjectId===item.subjectId && linked.source!=='catalog' && linked.favorite)))
     if (query.trim())
       items = items.filter((m) =>
         `${m.title} ${m.subtitle || ''}`
@@ -1978,6 +1985,7 @@ export default function App() {
                 <kbd>Ctrl K</kbd>
               )}
             </label>
+            <SearchSitesButton />
             <button
               type="button"
               className="appearance-trigger"
@@ -2132,6 +2140,7 @@ export default function App() {
               query={query}
               onResource={setResourceTarget}
               media={media}
+              onFavoriteChange={setState}
               onOpen={setSelected}
               onImport={(subject, mode) =>
                 setImporting({ mode, preset: subject.title, subject })
@@ -2250,10 +2259,11 @@ export default function App() {
               </footer>
             </section>
           )}
-          {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} />}
+          {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} onFavoriteChange={setState} />}
           {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} media={media} onLibraryChange={data=>{setState(data);notify('收藏状态已更新，剧集已保存在追剧片库')}} onPlaySaved={(data,id,episodeId)=>{setState(data);const episode=data.media.find(item=>item.id===id)?.episodes.find(item=>item.id===episodeId);if(episode)setPlaying({mediaId:id,episode})}} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
+              {page==='favorites'&&<p className="favorites-note">新番与高分电影可以先收藏作品，点击封面即可查找片源；已入库的影片支持直接选集。</p>}
               {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
               <div className="library-heading">
                 <div className="section-title">
@@ -2319,6 +2329,7 @@ export default function App() {
                     <option value="local">本地视频</option>
                     <option value="quark">夸克网盘</option>
                     <option value="url">在线片源</option>
+                    {page==='favorites'&&<option value="catalog">作品收藏 · 待选片源</option>}
                     {page !== 'library' && page !== 'tv' && (
                       <option value="sample">示例片单</option>
                     )}
@@ -2361,14 +2372,14 @@ export default function App() {
                         <div className="poster-wrap">
                           <button
                             className="poster-button"
-                            aria-label={`查看${m.title}的分集和详情`}
-                            onClick={() => setSelected(m.id)}
+                            aria-label={m.source==='catalog'?`查找${m.title}的片源`:`查看${m.title}的分集和详情`}
+                            onClick={() => openMedia(m)}
                           >
                             <Cover media={m} />
                             <div className="poster-shade" />
                             <span className="poster-source">
                               <SourceIcon source={m.source} />
-                              {m.source === 'sample'
+                              {m.source === 'catalog' ? '作品收藏' : m.source === 'sample'
                                 ? '片单'
                                 : m.source === 'local'
                                   ? '本地'
@@ -2382,17 +2393,17 @@ export default function App() {
                               </span>
                             )}
                             <span className="poster-play">
-                              <Play
+                              {m.source==='catalog'?<Search size={24}/>:<Play
                                 size={21}
                                 fill="currentColor"
                                 strokeWidth={1.5}
-                              />
+                              />}
                             </span>
                             <span className="poster-bottom">
-                              {m.source === 'sample'
+                              {m.source === 'catalog' ? '尚未选择片源' : m.source === 'sample'
                                 ? `全 ${m.total} 集`
                                 : `${m.episodes.length} 集`}
-                              {m.source === 'sample' ? (
+                              {m.source === 'catalog' ? <span>查找片源 <ArrowRight size={13}/></span> : m.source === 'sample' ? (
                                 <span>作品预览</span>
                               ) : (
                                 <span>
@@ -2424,7 +2435,7 @@ export default function App() {
                         <div className="card-copy">
                           <button
                             className="card-title"
-                            onClick={() => setSelected(m.id)}
+                            onClick={() => openMedia(m)}
                           >
                             {m.title}
                           </button>
@@ -2439,6 +2450,8 @@ export default function App() {
                                 m.metadataStatus || '',
                               )
                                 ? 'AI 整理中…'
+                                : m.source === 'catalog'
+                                  ? '待观看'
                                 : m.source === 'sample'
                                   ? '已完结'
                                   : m.source === 'local'
@@ -2458,9 +2471,9 @@ export default function App() {
                         {layout === 'list' && (
                           <button
                             className="button list-detail outline"
-                            onClick={() => setSelected(m.id)}
+                            onClick={() => openMedia(m)}
                           >
-                            查看分集 <ArrowRight size={15} />
+                            {m.source==='catalog'?'查找片源':'查看分集'} <ArrowRight size={15} />
                           </button>
                         )}
                       </article>
@@ -2568,6 +2581,8 @@ export default function App() {
         >
           <ResourceSearch
             subject={resourceTarget}
+            media={media}
+            onFavoriteChange={setState}
             onManualImport={() => {
               setImporting({
                 mode: 'quark',

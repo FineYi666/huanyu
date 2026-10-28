@@ -21,6 +21,8 @@ import type { MediaCategory } from '../media-category.mjs'
 import Dialog from './ui'
 import HeroCarousel from './HeroCarousel'
 import Poster from './Poster'
+import CatalogFavoriteButton from './CatalogFavoriteButton'
+import SearchSitesButton from './SearchSitesButton'
 import type { SkinId } from './skins'
 import type { AppState, Media } from './types'
 import { episodeLabel } from './episode-labels'
@@ -61,6 +63,7 @@ export default function NewSeasonPage({
   onImport,
   onOpen,
   media,
+  onFavoriteChange,
 }: {
   skin?: SkinId
   query: string
@@ -68,6 +71,7 @@ export default function NewSeasonPage({
   onImport: (subject: SeasonTitle, mode: 'local' | 'quark') => void
   onOpen: (id: string) => void
   media: Media[]
+  onFavoriteChange:(state:AppState)=>void
 }) {
   const [data, setData] = useState<Catalog | null>(null),
     [error, setError] = useState(''),
@@ -341,7 +345,7 @@ export default function NewSeasonPage({
           <div className="season-grid">
             {items.map((item) => {
               const linked = media.filter(
-                (m) => m.source !== 'sample' && m.subjectId === item.id,
+                (m) => !['sample','catalog'].includes(m.source) && m.subjectId === item.id,
               )
               return (
                 <article className="season-card" key={item.id}>
@@ -381,7 +385,7 @@ export default function NewSeasonPage({
                   <p className="season-original" title={item.subtitle}>
                     {item.subtitle || '本季度新作'}
                   </p>
-                  <button
+                  <div className="season-primary-actions"><button
                     className="button season-find"
                     aria-label={`获取${item.title}的夸克资源`}
                     onClick={() => onResource(item)}
@@ -390,6 +394,7 @@ export default function NewSeasonPage({
                     获取夸克资源
                     <ArrowUpRight size={14} />
                   </button>
+                  <CatalogFavoriteButton subjectId={item.id} title={item.title} media={media} onChange={onFavoriteChange}/></div>
                   <div
                     className="season-import-actions"
                     aria-label={`${item.title}的导入方式`}
@@ -459,11 +464,15 @@ export function ResourceSearch({
   onImported,
   onWorking,
   onManualImport,
+  media,
+  onFavoriteChange,
 }: {
   subject: SeasonTitle
   onImported: (data: AppState, ids: string[], count: number) => void
   onWorking: (busy: boolean) => void
   onManualImport: () => void
+  media:Media[]
+  onFavoriteChange:(state:AppState)=>void
 }) {
   const [query, setQuery] = useState(subject.title)
   const [importing, setImporting] = useState('')
@@ -478,12 +487,13 @@ export function ResourceSearch({
     setWebBusy(true)
     setWebError('')
     try {
-      const value = await api<{ results: WebSourceResult[] }>(
+      const value = await api<{ results: WebSourceResult[]; sources?:{needsVerification?:boolean;message?:string}[] }>(
         '/web-sources/search',
         { keyword, subjectId:subject.id, category:subject.category||'anime' },
       )
       if(revision!==webRevision.current)return
       setWebSources(value.results || [])
+      if(!value.results?.length&&value.sources?.some(source=>source.needsVerification))setWebError('网站需要访问验证。点击“搜索网站”，在对应来源中选择“验证 / 登录”，完成后重新搜索。')
     } catch (e) {
       if(revision===webRevision.current){setWebError((e as Error).message);setWebSources([])}
     } finally {
@@ -548,6 +558,7 @@ export function ResourceSearch({
               <ArrowUpRight size={12} />
             </a>
           )}
+          {subject.id&&!subject.replaceMediaId&&<CatalogFavoriteButton subjectId={subject.id} title={subject.title} media={media} onChange={onFavoriteChange}/>}
         </div>
       </div>
       <form
@@ -575,9 +586,10 @@ export function ResourceSearch({
           搜索
         </button>
       </form>
+      <SearchSitesButton />
       <p className="resource-note">
-        同时搜索夸克盘搜、PanSearch 和
-        PanSou，自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
+        同时搜索内置来源与已启用的自定义网站，
+        自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <OnlineSources results={webSources} busy={webBusy} error={webError} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />

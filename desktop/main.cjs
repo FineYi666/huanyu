@@ -39,7 +39,9 @@ function external(value) {
     if (url.protocol === 'https:') void shell.openExternal(url.href)
   } catch {}
 }
-if (process.argv.includes('--public-resource-search')) {
+if(process.argv.includes('--custom-site')) {
+  require('./site-browser.cjs').run(process.argv[process.argv.indexOf('--custom-site')+1])
+} else if (process.argv.includes('--public-resource-search')) {
   require('./resource-browser.cjs').run(
     process.argv[process.argv.indexOf('--public-resource-search') + 1],
   )
