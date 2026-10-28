@@ -18,5 +18,5 @@ export default function SavedOnlinePlayer({media,initialEpisode,autoNext,onClose
   const selected=data?.results.find(item=>item.id===data.preferredId && item.episodes.some(ep=>ep.id===initialEpisode.id)) || data?.results.find(item=>item.episodes.some(ep=>ep.id===initialEpisode.id))
   const episode=selected?.episodes.find(ep=>ep.id===initialEpisode.id)
   if(selected && episode)return <OnlinePlayer results={data!.results} initialResult={selected} initialEpisode={episode} libraryMedia={media} onFavorite={onFavorite} onProgress={onProgress} autoNext={autoNext} onClose={onClose} onInvalid={()=>{}} />
-  return <Dialog title={media.title} onClose={onClose}><div className="season-empty">{!data&&!error?<LoaderCircle className="spin" size={28}/>:null}<h3>{error || (data?'本集没有可用线路，请重新选择资源':'正在打开追剧记录…')}</h3></div></Dialog>
+  return <Dialog title={media.title} onClose={onClose}><div className="season-empty">{!data&&!error?<LoaderCircle className="spin" size={28}/>:null}<h3>{error || (data?'本集没有可用线路，请重新选择资源':'正在打开观看记录…')}</h3></div></Dialog>
 }

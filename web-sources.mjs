@@ -144,6 +144,10 @@ export function createWebSources({
         if(seen.has(candidate.url))continue;seen.add(candidate.url)
         const page=await readPage(source.site,candidate.url)
         for(const road of parsePageSources(page,category).slice(0,source.id==='age'?2:8)){
+          if(source.id==='age'){
+            const workId=new URL(road.pageUrl).pathname.split('/').pop()
+            road.cover=(search.links||[]).find(link=>link.image && new RegExp(`/(?:detail|play)/${workId}(?:/|$)`).test(new URL(link.url,source.api).pathname))?.image || ''
+          }
           if(!matchesWork({title:road.title,type:road.category==='movie'?'电影':road.category==='tv'?'电视剧':'动漫'},query,{aliases,category}))continue
           const episode=road.episodes[0]
           try{const checked=await probeEpisode(source,road,episode);const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue

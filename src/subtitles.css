@@ -171,6 +171,4 @@
 .player-dialog.player-expanded .video-stage { height: min(70dvh, calc((100vw - 340px) * .5625)); aspect-ratio: auto; }
 .player-dialog .video-stage:fullscreen { width: 100vw; height: 100dvh; max-height: none; border: 0; border-radius: 0; aspect-ratio: auto; background: #000; }
 .video-stage:fullscreen video { width: 100%; height: 100%; object-fit: contain; }
-.fullscreen-exit { position: absolute; top: 20px; right: 20px; z-index: 3; color: #fff; background: #121821b8; backdrop-filter: blur(15px); opacity: .45; }
-.fullscreen-exit:hover, .fullscreen-exit:focus-visible { opacity: 1; }
 @media (max-width: 800px) { .player-dialog.player-expanded .video-stage { height: 55dvh; } }

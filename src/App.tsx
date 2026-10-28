@@ -93,14 +93,13 @@ import SubtitlePanel, { type SubtitleTrack } from './SubtitlePanel'
 type Page =
   | 'home'
   | 'library'
-  | 'anime'
-  | 'movies'
   | 'tv'
   | 'movie-discovery'
   | 'games'
   | 'favorites'
   | 'history'
 type ImportMode = 'local' | 'quark'
+type NavTarget = Page | 'anime' | 'movies'
 const genres = ['全部', '奇幻', '治愈', '日常', '热血', '悬疑', '电影']
 const sourceNames = {
   catalog: '作品收藏',
@@ -111,17 +110,15 @@ const sourceNames = {
 }
 const pageNames = {
   home: '本季新番',
-  library: '我的媒体库',
-  anime: '动漫',
-  movies: '电影',
+  library: '我的片库',
   tv: '电视剧',
   'movie-discovery': '豆瓣高分电影',
   games: '游戏空间',
   favorites: '我的收藏',
-  history: '观看记录',
+  history: '最近观看',
 }
 const categoryOf = mediaCategory
-const categoryPage = (category: MediaCategory): Page =>
+const categoryPage = (category: MediaCategory): NavTarget =>
   category === 'movie' ? 'movies' : category === 'tv' ? 'tv' : 'anime'
 const categoryName = (category?: MediaCategory) =>
   category === 'movie' ? '电影' : category === 'tv' ? '电视剧' : '动漫'
@@ -931,7 +928,6 @@ function Player({
   const [useExternal, setUseExternal] = useState(false)
   const video = useRef<HTMLVideoElement>(null)
   const stage = useRef<HTMLDivElement>(null)
-  const [fullscreen, setFullscreen] = useState(false)
   const [expanded, setExpanded] = useState(false)
   const fullscreenLeftAt = useRef(0)
   const toggleFullscreen = useCallback(async () => {
@@ -946,7 +942,6 @@ function Player({
   }, [notify])
   useEffect(() => {
     const changed = () => {
-      setFullscreen(Boolean(document.fullscreenElement))
       if (!document.fullscreenElement) fullscreenLeftAt.current = Date.now()
     }
     const key = (event: KeyboardEvent) => {
@@ -1066,7 +1061,6 @@ function Player({
       <div className="player-layout">
         <div className="player-main">
           <div className="video-stage" ref={stage} onDoubleClick={(event) => { if (event.target === stage.current || event.target === video.current) void toggleFullscreen() }}>
-            {fullscreen && <button className="button fullscreen-exit" onClick={() => void toggleFullscreen()}><Minimize size={16} /> 退出全屏</button>}
             {(
               <CinemaVideo
                 ref={video}
@@ -1475,6 +1469,7 @@ export default function App() {
   const [state, setState] = useState<AppState | null>(null)
   const [loadError, setLoadError] = useState('')
   const [page, setPage] = useState<Page>('home')
+  const [libraryCategory,setLibraryCategory]=useState<'all'|MediaCategory>('all')
   const [query, setQuery] = useState('')
   const [genre, setGenre] = useState('全部')
   const [source, setSource] = useState('all')
@@ -1815,7 +1810,18 @@ export default function App() {
   const real = media.filter((m) => !['sample','catalog'].includes(m.source))
   function openMedia(item:Media) {
     if(item.source==='catalog')setResourceTarget({id:item.subjectId || '',title:item.title,subtitle:item.subtitle || '',description:item.description || '',image:item.cover || '',category:categoryOf(item),score:Number(item.rating) || undefined,sourceUrl:item.posterSourceUrl})
+    else if(page==='history' && latestProgress(item)){
+      const episode=item.episodes.find(ep=>ep.id===latestProgress(item)![0])
+      if(episode)setPlaying({mediaId:item.id,episode})
+      else setSelected(item.id)
+    }
     else setSelected(item.id)
+  }
+  function playSavedOnline(data:AppState,id:string,episodeId:string){
+    setState(data)
+    const episode=data.media.find(item=>item.id===id)?.episodes.find(item=>item.id===episodeId)
+    if(episode){setResourceTarget(null);setPlaying({mediaId:id,episode})}
+    else notify('本集记录未能保存，请重新选择片源')
   }
   const visible = useMemo(() => {
     let items = media.filter((m) =>
@@ -1834,10 +1840,8 @@ export default function App() {
           .toLowerCase()
           .includes(query.trim().toLowerCase()),
       )
-    if (page === 'anime' || page === 'movies' || page === 'tv')
-      items = items.filter(
-        (m) => categoryOf(m) === (page === 'movies' ? 'movie' : page === 'tv' ? 'tv' : 'anime'),
-      )
+    if (page === 'tv')items=items.filter(m=>categoryOf(m)==='tv')
+    if(page==='library' && libraryCategory!=='all')items=items.filter(item=>categoryOf(item)===libraryCategory)
     if (genre !== '全部') items = items.filter((m) => m.genre === genre)
     if (source !== 'all') items = items.filter((m) => m.source === source)
     if (sort === 'title')
@@ -1850,7 +1854,7 @@ export default function App() {
       items.sort((a, b) => latestProgress(b)![1].at - latestProgress(a)![1].at)
     else items.sort((a, b) => b.addedAt - a.addedAt)
     return items
-  }, [media, page, query, genre, source, sort, state?.settings.showSamples])
+  }, [media, page, libraryCategory, query, genre, source, sort, state?.settings.showSamples])
   const detail = media.find((m) => m.id === selected)
   const playerMedia = media.find((m) => m.id === playing?.mediaId)
   const games = state?.games || []
@@ -1895,8 +1899,10 @@ export default function App() {
       )
     return items
   }, [games, query])
-  const nav = (newPage: Page) => {
-    setPage(newPage)
+  const nav = (newPage: NavTarget) => {
+    const category=newPage==='movies'?'movie':newPage==='anime'?'anime':null
+    setPage(newPage==='anime'||newPage==='movies'?'library':newPage)
+    setLibraryCategory(category || 'all')
     setQuery('')
     setGenre('全部')
     setSource('all')
@@ -1939,10 +1945,9 @@ export default function App() {
           {(
             [
               { id: 'home', icon: LayoutGrid, label: '新番' },
-              { id: 'anime', icon: Play, label: '动漫' },
-              { id: 'movies', icon: Film, label: '电影' },
               { id: 'tv', icon: Tv, label: '电视剧' },
               { id: 'movie-discovery', icon: Star, label: '高分电影' },
+              { id: 'library', icon: FolderOpen, label: '片库' },
               { id: 'games', icon: Gamepad2, label: '游戏' },
               { id: 'favorites', icon: Heart, label: '收藏' },
               { id: 'history', icon: History, label: '最近观看' },
@@ -1972,7 +1977,7 @@ export default function App() {
               <Search size={17} />
               <input
                 ref={search}
-                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'movies' ? '搜索我的电影' : page === 'tv' ? '搜索电视剧名称' : '搜索你想看的故事'}
+                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'library' ? '搜索片库中的作品' : page === 'tv' ? '搜索电视剧名称' : '搜索你想看的故事'}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label="搜索作品"
@@ -2048,12 +2053,8 @@ export default function App() {
               <p>
                 {page === 'home'
                   ? '这一季的相遇，从这里开始。浏览新番，发现资源，收藏喜欢的故事。'
-                  : page === 'anime'
-                    ? '连载与长篇，收进专属的动漫片库。'
                     : page === 'movie-discovery'
                       ? '按片名寻找，按类型探索，把喜欢的电影收进片库。'
-                    : page === 'movies'
-                      ? '为完整的一场光影，留一个专门的位置。'
                       : page === 'tv'
                         ? '收藏云端剧集，寻找在线片源，把每一季的故事接着看。'
                       : page === 'library'
@@ -2065,7 +2066,7 @@ export default function App() {
                             : '每一次暂停，都是下一次相遇的起点。'}
               </p>
             </div>
-            {page === 'movie-discovery' ? <button className="button outline import-main" onClick={() => nav('movies')}><Film size={17} /> 我的电影</button> : page === 'games' ? (
+            {page === 'movie-discovery' ? <button className="button outline import-main" onClick={() => nav('movies')}><Film size={17} /> 电影片库</button> : page === 'games' ? (
               <button
                 className="button primary import-main"
                 onClick={() => setGameImporting(true)}
@@ -2260,19 +2261,16 @@ export default function App() {
             </section>
           )}
           {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} onFavoriteChange={setState} />}
-          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} media={media} onLibraryChange={data=>{setState(data);notify('收藏状态已更新，剧集已保存在追剧片库')}} onPlaySaved={(data,id,episodeId)=>{setState(data);const episode=data.media.find(item=>item.id===id)?.episodes.find(item=>item.id===episodeId);if(episode)setPlaying({mediaId:id,episode})}} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
+          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} media={media} onLibraryChange={data=>{setState(data);notify('收藏状态已更新，剧集已保存在追剧片库')}} onPlaySaved={playSavedOnline} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
               {page==='favorites'&&<p className="favorites-note">新番与高分电影可以先收藏作品，点击封面即可查找片源；已入库的影片支持直接选集。</p>}
-              {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
+              {page==='library'&&<div className="library-category-tabs" role="group" aria-label="片库影视分类">{(['all','anime','movie','tv'] as const).map(category=><button key={category} type="button" aria-pressed={libraryCategory===category} className={libraryCategory===category?'active':''} onClick={()=>{setLibraryCategory(category);setGenre('全部');setQuery('')}}>{category==='all'?'全部影视':categoryName(category)}<span>{real.filter(item=>category==='all'||categoryOf(item)===category).length}</span></button>)}</div>}
+              {page === 'library' && libraryCategory==='movie' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
               <div className="library-heading">
                 <div className="section-title">
                   <h2>{page === 'tv' ? query ? '片库中匹配的电视剧' : '我的追剧片库' : query ? '搜索结果' : pageNames[page]}</h2>
                   <span className="count-label">{visible.length} 部作品</span>
-                  {['anime', 'movies'].includes(page) &&
-                    state?.settings.showSamples && (
-                      <span className="sample-label">含示例片单</span>
-                    )}
                 </div>
                 <div className="view-controls">
                   <label className="sort-select">
@@ -2282,7 +2280,7 @@ export default function App() {
                       onChange={(e) => setSort(e.target.value)}
                       aria-label="作品排序"
                     >
-                      <option value="default">最近添加</option>
+                      <option value="default">{page==='history'?'最近观看':'最近添加'}</option>
                       <option value="title">名称排序</option>
                       <option value="rating">评分优先</option>
                     </select>
@@ -2372,7 +2370,7 @@ export default function App() {
                         <div className="poster-wrap">
                           <button
                             className="poster-button"
-                            aria-label={m.source==='catalog'?`查找${m.title}的片源`:`查看${m.title}的分集和详情`}
+                            aria-label={m.source==='catalog'?`查找${m.title}的片源`:page==='history'?`继续观看${m.title}`:`查看${m.title}的分集和详情`}
                             onClick={() => openMedia(m)}
                           >
                             <Cover media={m} />
@@ -2400,14 +2398,14 @@ export default function App() {
                               />}
                             </span>
                             <span className="poster-bottom">
-                              {m.source === 'catalog' ? '尚未选择片源' : m.source === 'sample'
+                              {page==='history'&&progress ? `看到 ${timeLabel(progress[1].time)}` : m.source === 'catalog' ? '尚未选择片源' : m.source === 'sample'
                                 ? `全 ${m.total} 集`
                                 : `${m.episodes.length} 集`}
                               {m.source === 'catalog' ? <span>查找片源 <ArrowRight size={13}/></span> : m.source === 'sample' ? (
                                 <span>作品预览</span>
                               ) : (
                                 <span>
-                                  点击选集 <ArrowRight size={13} />
+                                  {page==='history'?'继续观看':'点击选集'} <ArrowRight size={13} />
                                 </span>
                               )}
                             </span>
@@ -2457,7 +2455,7 @@ export default function App() {
                                   : m.source === 'local'
                                     ? '本地收藏'
                                     : m.source === 'url'
-                                      ? '在线追剧'
+                                      ? '在线播放'
                                       : '云端资源'}
                             </span>
                           </div>
@@ -2473,7 +2471,7 @@ export default function App() {
                             className="button list-detail outline"
                             onClick={() => openMedia(m)}
                           >
-                            {m.source==='catalog'?'查找片源':'查看分集'} <ArrowRight size={15} />
+                            {m.source==='catalog'?'查找片源':page==='history'?'继续观看':'查看分集'} <ArrowRight size={15} />
                           </button>
                         )}
                       </article>
@@ -2583,6 +2581,7 @@ export default function App() {
             subject={resourceTarget}
             media={media}
             onFavoriteChange={setState}
+            onPlaySaved={playSavedOnline}
             onManualImport={() => {
               setImporting({
                 mode: 'quark',
@@ -2616,12 +2615,9 @@ export default function App() {
           categoryPreset={
             importing.replacement ? categoryOf(importing.replacement) : importing.subject
               ? importing.subject.category || 'anime'
-              : page === 'movies'
-                ? 'movie'
+              : page === 'library' && libraryCategory!=='all' ? libraryCategory
                 : page === 'tv'
                   ? 'tv'
-                : page === 'anime'
-                  ? 'anime'
                   : undefined
           }
           onClose={() => setImporting(null)}
@@ -2629,7 +2625,7 @@ export default function App() {
             setState(data)
             setImporting(null)
             setSelected(ids.length === 1 ? ids[0] : null)
-            setPage(categoryPage(categoryOf(data.media.find((m) => m.id === ids[0]) || ({} as Media))))
+            nav(categoryPage(categoryOf(data.media.find((m) => m.id === ids[0]) || ({} as Media))))
             setGenre('全部')
             setSource('all')
             setQuery('')

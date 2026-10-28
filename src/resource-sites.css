@@ -16,3 +16,8 @@ html .app-shell .catalog-favorite:focus-visible{outline:2px solid var(--green);o
 .site-verification-notice{display:flex;align-items:center;gap:9px;margin:12px 0;padding:12px 14px;border:1px solid var(--border);border-radius:12px;background:var(--subtle);color:var(--secondary);font-size:12px;line-height:1.7}
 .site-verification-notice svg{flex:none;color:var(--green)}
 .site-verification-notice button{margin-left:auto;white-space:nowrap;color:var(--green)}
+.library-category-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 24px}
+.library-category-tabs button{display:inline-flex;align-items:center;gap:9px;min-height:38px;padding:8px 14px;border:1px solid var(--border);border-radius:12px;background:rgb(var(--glass-rgb)/.32);color:var(--secondary);font-size:12px}
+.library-category-tabs button.active{background:rgb(var(--accent-rgb)/.16);border-color:rgb(var(--accent-rgb)/.5);color:var(--green)}
+.library-category-tabs button span{font-size:10px;font-variant-numeric:tabular-nums;opacity:.65}
+.library-category-tabs button:focus-visible{outline:2px solid var(--green);outline-offset:3px}

@@ -91,11 +91,12 @@ export default function OnlinePlayer({
   }
   function saveProgress() {
     capture()
-    if(libraryMedia && point.current)void api('/progress',{mediaId:libraryMedia.id,...point.current}).then(()=>progressCallback.current?.()).catch(()=>{})
+    if(libraryMedia && point.current)return api('/progress',{mediaId:libraryMedia.id,...point.current}).then(()=>progressCallback.current?.()).catch(()=>{})
+    return Promise.resolve()
   }
   const saveCallback=useRef(saveProgress)
   saveCallback.current=saveProgress
-  useEffect(()=>()=>saveCallback.current(),[])
+  useEffect(()=>()=>{void saveCallback.current()},[])
   function selectEpisode(next:WebEpisode) {
     saveProgress()
     point.current=null
@@ -123,8 +124,7 @@ export default function OnlinePlayer({
       return
     }
     if (Date.now() - fullscreenLeft.current < 350) return
-    saveProgress()
-    onClose()
+    void saveProgress().finally(onClose)
   }
   const index = result.episodes.findIndex((item) => item.id === episode.id)
   const sources = results.some((item) => item.id === result.id)
@@ -241,7 +241,7 @@ export default function OnlinePlayer({
                 autoPlay={!resume.current?.paused}
                 playsInline
                 data-episode-id={stream ? episode.id : undefined}
-                onTimeUpdate={()=>{capture();if(Date.now()-lastSaved.current>5000){lastSaved.current=Date.now();saveProgress()}}}
+                onTimeUpdate={()=>{capture();if(point.current&&Date.now()-lastSaved.current>5000){lastSaved.current=Date.now();void saveProgress()}}}
                 onPause={saveProgress}
                 qualities={qualities}
                 qualityId={stream?.id}

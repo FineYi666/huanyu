@@ -467,6 +467,7 @@ export function ResourceSearch({
   onManualImport,
   media,
   onFavoriteChange,
+  onPlaySaved,
 }: {
   subject: SeasonTitle
   onImported: (data: AppState, ids: string[], count: number) => void
@@ -474,6 +475,7 @@ export function ResourceSearch({
   onManualImport: () => void
   media:Media[]
   onFavoriteChange:(state:AppState)=>void
+  onPlaySaved:(state:AppState,id:string,episodeId:string)=>void
 }) {
   const [query, setQuery] = useState(subject.title)
   const [importing, setImporting] = useState('')
@@ -594,7 +596,7 @@ export function ResourceSearch({
         同时搜索内置来源与已启用的自定义网站，
         自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
-      <OnlineSources results={webSources} busy={webBusy} error={webError} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
+      <OnlineSources results={webSources} busy={webBusy} error={webError} library={media} onLibraryChange={onFavoriteChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <SiteVerificationNotice sources={verificationSources} onVerified={()=>void loadWebSources(query)} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <div className="resource-fallback-actions">

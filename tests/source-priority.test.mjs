@@ -4,13 +4,14 @@ import {createWebSources,AGE_SOURCE,sourcePriority} from '../web-sources.mjs'
 import {parsePageSources} from '../page-sources.mjs'
 import {createSiteRenderer} from '../site-renderer.mjs'
 
-const ageDetail={url:'https://www.agedm.io/detail/123',documentTitle:'测试动漫 第二季 - AGE动漫',roadLabels:['VIP 西瓜','非凡'],links:[13,14].map(n=>({title:`第${n}集`,url:`https://www.agedm.io/play/123/2/${n}`}))}
+const ageDetail={url:'https://www.agedm.io/detail/123',documentTitle:'测试动漫 第二季 - AGE动漫',image:'https://www.agedm.io/logo.png',text:'首播时间：2026-10-01',roadLabels:['VIP 西瓜','非凡'],links:[13,14].map(n=>({title:`第${n}集`,url:`https://www.agedm.io/play/123/2/${n}`}))}
 test('AGE keeps complete episode pages, separates seasons and resolves each selected episode lazily',async()=>{
   const reads=[]
-  const service=createWebSources({providers:[AGE_SOURCE],searchPage:async()=>({links:[{title:'测试动漫 第二季',url:'http://www.agedm.io/detail/123'},{title:'测试动漫 第二季',url:'https://www.agedm.io/play/123/2/13'}]}),readPage:async(_s,url)=>{reads.push(url);return {...ageDetail,url,media:url.includes('/play/')?[`https://cdn.example/${url.split('/').pop()}.m3u8`]:[]}},probe:async source=>({...source,format:'hls',width:1920,height:1080})})
+  const service=createWebSources({providers:[AGE_SOURCE],searchPage:async()=>({links:[{title:'测试动漫 第二季',url:'http://www.agedm.io/detail/123',image:'https://poster.example/anime.jpg'},{title:'测试动漫 第二季',url:'https://www.agedm.io/play/123/2/13'}]}),readPage:async(_s,url)=>{reads.push(url);return {...ageDetail,url,media:url.includes('/play/')?[`https://cdn.example/${url.split('/').pop()}.m3u8`]:[]}},probe:async source=>({...source,format:'hls',width:1920,height:1080})})
   const result=await service.search('测试动漫 第二季',{category:'anime'})
   assert.equal(result.results.length,1)
   const item=result.results[0]
+  assert.equal(item.cover,'https://poster.example/anime.jpg');assert.equal(item.year,'2026')
   assert.deepEqual(item.episodes.map(ep=>ep.number),[1,2]);assert.equal(item.episodes[0].season,2)
   assert.ok(!reads.some(url=>url.endsWith('/14')))
   const second=await service.resolve(item.id,item.episodes[1].id)

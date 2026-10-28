@@ -47,6 +47,6 @@ function parseAgeSources(page) {
     // Never interpret a membership-labelled road as a public direct stream.
     if(/VIP|会员|付费/i.test(road))return []
     const ordered=[...entries.values()].sort((a,b)=>a.raw-b.raw),offset=season>1?ordered[0].raw-1:0
-    return [{title,category:'anime',cover:page.image||'',description:page.text?.split('在线播放')[0].slice(0,1200)||'',pageUrl:`https://www.agedm.io/detail/${work}`,pageSeason:season,pageNodeId:`age-${group}`,road,headers:{Referer:page.url},episodes:ordered.map(ep=>({...ep,id:hash(`${work}/${group}/${ep.raw}`),season,number:ep.raw-offset,title:`第${ep.raw-offset}集`}))}]
+    return [{title,category:'anime',cover:'',year:page.text?.match(/首播时间[:：]?\s*((?:19|20)\d{2})/)?.[1]||'',description:page.text?.split('在线播放')[0].slice(0,1200)||'',pageUrl:`https://www.agedm.io/detail/${work}`,pageSeason:season,pageNodeId:`age-${group}`,road,headers:{Referer:page.url},episodes:ordered.map(ep=>({...ep,id:hash(`${work}/${group}/${ep.raw}`),season,number:ep.raw-offset,title:`第${ep.raw-offset}集`}))}]
   })
 }

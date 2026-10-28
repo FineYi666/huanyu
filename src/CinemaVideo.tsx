@@ -3,6 +3,7 @@ import {
   ArrowLeft,
   Camera,
   Maximize,
+  Minimize,
   Pause,
   PictureInPicture2,
   Play,
@@ -61,6 +62,13 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
   const pictureRequest = useRef(0)
   const [intent, setIntent] = useState<{src:string;playing:boolean} | null>(null)
   const [inPicture, setInPicture] = useState(false)
+  const [isFullscreen,setIsFullscreen]=useState(false)
+  useEffect(()=>{
+    const changed=()=>setIsFullscreen(Boolean(document.fullscreenElement && shell.current && document.fullscreenElement.contains(shell.current)))
+    document.addEventListener('fullscreenchange',changed)
+    changed()
+    return()=>document.removeEventListener('fullscreenchange',changed)
+  },[])
   const [time, setTime] = useState(0),
     [duration, setDuration] = useState(0),
     [paused, setPaused] = useState(true),
@@ -488,11 +496,11 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
               </select>
             </label>
             <button
-              aria-label="全屏播放"
-              title="全屏 · F"
+              aria-label={isFullscreen?'退出全屏':'全屏播放'}
+              title={isFullscreen?'退出全屏 · Esc / F':'全屏 · F'}
               onClick={() => void fullscreen()}
             >
-              <Maximize size={20} />
+              {isFullscreen?<Minimize size={20}/>:<Maximize size={20} />}
             </button>
           </div>
         </div>
