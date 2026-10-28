@@ -56,6 +56,11 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
   const video = useRef<HTMLVideoElement | null>(null),
     shell = useRef<HTMLDivElement>(null),
     idle = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const playRequest = useRef(0)
+  const playbackIntent = useRef<{src:string;playing:boolean} | null>(null)
+  const pictureRequest = useRef(0)
+  const [intent, setIntent] = useState<{src:string;playing:boolean} | null>(null)
+  const [inPicture, setInPicture] = useState(false)
   const [time, setTime] = useState(0),
     [duration, setDuration] = useState(0),
     [paused, setPaused] = useState(true),
@@ -72,19 +77,43 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
     setHud(true)
     clearTimeout(idle.current)
     idle.current = setTimeout(() => {
-      if (video.current && !video.current.paused) setHud(false)
+      if (video.current && !video.current.paused && !shell.current?.querySelector('.cinema-hud:hover, .cinema-hud :focus-visible')) setHud(false)
     }, 3000)
   }
   useEffect(() => {
+    ++playRequest.current
+    playbackIntent.current = null
     setLevels([])
     setHlsQuality('')
     setWaiting(true)
     setTime(0)
     setDuration(0)
     setHeight(0)
+    setNotice('')
     wake()
     return () => clearTimeout(idle.current)
   }, [props.src])
+  useEffect(() => {
+    const element = video.current!
+    const enter = () => setInPicture(true)
+    const leave = () => setInPicture(false)
+    element.addEventListener('enterpictureinpicture', enter)
+    element.addEventListener('leavepictureinpicture', leave)
+    const close = () => {
+      ++pictureRequest.current
+      ++playRequest.current
+      element.pause()
+      if (document.pictureInPictureElement === element)
+        void document.exitPictureInPicture().catch(() => {})
+    }
+    window.addEventListener('pagehide', close)
+    return () => {
+      close()
+      window.removeEventListener('pagehide', close)
+      element.removeEventListener('enterpictureinpicture', enter)
+      element.removeEventListener('leavepictureinpicture', leave)
+    }
+  }, [])
   useEffect(() => {
     const element = video.current
     if (!element) return
@@ -113,6 +142,8 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
       'volumechange',
       'ratechange',
       'play',
+      'ended',
+      'emptied',
     ]
     for (const event of events) element.addEventListener(event, update)
     element.addEventListener('playing', ready)
@@ -130,15 +161,29 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
   }, [props.src])
   async function play() {
     const element = video.current
-    if (!element) return
-    if (element.paused) {
+    if (!element || !props.src) return
+    const request = ++playRequest.current
+    const playing = playbackIntent.current?.src === props.src ? !playbackIntent.current.playing : element.paused || element.ended
+    const next = {src:props.src,playing}
+    playbackIntent.current = next
+    setIntent(next)
+    setNotice('')
+    wake()
+    if (playing) {
       try {
         await element.play()
-        wake()
-      } catch {
-        setNotice('无法开始播放，请切换线路或画质')
+      } catch (error) {
+        if (request !== playRequest.current || (error as DOMException).name === 'AbortError') return
+        setNotice((error as DOMException).name === 'NotAllowedError' ? '请再次点击播放以允许视频开始' : '无法开始播放，请重试或切换线路、画质')
+        setWaiting(false)
+      } finally {
+        if (request === playRequest.current) playbackIntent.current = null
       }
-    } else element.pause()
+    } else {
+      element.pause()
+      playbackIntent.current = null
+      setWaiting(false)
+    }
   }
   async function fullscreen() {
     if (onFullscreen) {
@@ -153,10 +198,20 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
     }
   }
   async function picture() {
+    const element = video.current
+    if (!element || element.readyState < 2) {
+      setNotice('画面加载完成后即可开启画中画')
+      return
+    }
+    const request = ++pictureRequest.current
     try {
-      if (document.pictureInPictureElement)
+      if (document.pictureInPictureElement === element)
         await document.exitPictureInPicture()
-      else await video.current?.requestPictureInPicture()
+      else {
+        await element.requestPictureInPicture()
+        if ((request !== pictureRequest.current || !element.isConnected) && document.pictureInPictureElement === element)
+          await document.exitPictureInPicture()
+      }
     } catch {
       setNotice('当前视频暂不支持画中画')
     }
@@ -232,6 +287,7 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
     >
       <StreamVideo
         {...props}
+        autoPlay={intent?.src === props.src ? intent.playing : props.autoPlay}
         ref={(element) => {
           video.current = element
           if (typeof forwarded === 'function') forwarded(element)
@@ -259,7 +315,7 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
           void play()
         }}
       />
-      <header className="cinema-hud cinema-top">
+      <header className="cinema-hud cinema-top" onPointerEnter={wake} onPointerLeave={wake}>
         <div>
           {onBack && (
             <button aria-label="返回片源" title="返回片源" onClick={onBack}>
@@ -281,8 +337,9 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
             <Camera size={19} />
           </button>
           <button
-            aria-label="画中画"
-            title="画中画"
+            aria-label={inPicture ? '退出画中画' : '画中画'}
+            title={inPicture ? '退出画中画' : '画中画'}
+            aria-pressed={inPicture}
             onClick={() => void picture()}
           >
             <PictureInPicture2 size={20} />
@@ -295,7 +352,7 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
           <span>正在缓冲画面</span>
         </div>
       )}
-      {paused && !waiting && (
+      {paused && props.src && (
         <button
           className="cinema-center-play"
           aria-label="继续播放"
@@ -309,7 +366,7 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
           {notice}
         </button>
       )}
-      <div className="cinema-hud cinema-bottom">
+      <div className="cinema-hud cinema-bottom" onPointerEnter={wake} onPointerLeave={wake}>
         <input
           className="cinema-seek"
           aria-label="播放进度"

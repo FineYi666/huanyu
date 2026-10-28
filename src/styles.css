@@ -1299,6 +1299,7 @@ main {
   margin-left: 25px;
 }
 .dialog {
+  overscroll-behavior: contain;
   border: 1px solid var(--border);
   padding: 0;
   border-radius: 18px;

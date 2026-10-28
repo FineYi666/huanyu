@@ -1,5 +1,6 @@
-import { useEffect, useRef, type ReactNode } from 'react'
+import { useLayoutEffect, useRef, type ReactNode } from 'react'
 import { X } from 'lucide-react'
+import { lockPageScroll } from './modal-lock'
 
 export function IconButton({
   children,
@@ -43,9 +44,10 @@ export default function Dialog({
   const dialog = useRef<HTMLDialogElement>(null)
   const initialClose = useRef(onClose)
   initialClose.current = onClose
-  useEffect(() => {
+  useLayoutEffect(() => {
     const element = dialog.current!
     element.showModal()
+    const unlock = lockPageScroll()
     const close = (event: Event) => {
       event.preventDefault()
       initialClose.current()
@@ -54,6 +56,7 @@ export default function Dialog({
     return () => {
       element.removeEventListener('cancel', close)
       element.close()
+      unlock()
     }
   }, [])
   return (

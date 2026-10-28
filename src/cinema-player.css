@@ -203,6 +203,9 @@
   background: #1826388f;
   backdrop-filter: blur(12px);
 }
+.cinema-video .cinema-center-play:active:not(:disabled) {
+  transform: translate(-50%, -50%) scale(.96);
+}
 .cinema-buffer {
   position: absolute;
   z-index: 2;

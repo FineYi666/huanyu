@@ -972,7 +972,7 @@ function Player({
   const save = useCallback(() => {
     const element = video.current
     if (
-      !element ||
+      !element || !element.dataset.episodeId ||
       !Number.isFinite(element.duration) ||
       !element.duration ||
       element.currentTime < 0.2
@@ -1065,10 +1065,9 @@ function Player({
         <div className="player-main">
           <div className="video-stage" ref={stage} onDoubleClick={(event) => { if (event.target === stage.current || event.target === video.current) void toggleFullscreen() }}>
             {fullscreen && <button className="button fullscreen-exit" onClick={() => void toggleFullscreen()}><Minimize size={16} /> 退出全屏</button>}
-            {url && (
+            {(
               <CinemaVideo
                 ref={video}
-                key={episode.id}
                 title={media.title}
                 episodeTitle={episodeLabel(index,media.episodes,media.title)}
                 qualities={qualities}
@@ -1086,7 +1085,7 @@ function Player({
                 onSubtitleError={setSubtitleError}
                 onStreamError={setError}
                 data-media-id={media.id}
-                data-episode-id={episode.id}
+                data-episode-id={url ? episode.id : undefined}
                 autoPlay={!qualityResume.current?.paused}
                 playsInline
                 preload="metadata"
@@ -1889,19 +1888,6 @@ export default function App() {
       )
     return items
   }, [games, query])
-  // 弹窗打开期间停用顶栏拖动手柄，避免拖动区吞掉弹窗附近的点击。
-  const modalOpen =
-    Boolean(importing) ||
-    Boolean(resourceTarget) ||
-    Boolean(detail) ||
-    Boolean(playing) ||
-    Boolean(settings) ||
-    Boolean(appearance) ||
-    gameImporting ||
-    Boolean(gameDetail)
-  useEffect(() => {
-    document.documentElement.dataset.modalOpen = String(modalOpen)
-  }, [modalOpen])
   const nav = (newPage: Page) => {
     setPage(newPage)
     setQuery('')

@@ -134,6 +134,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, StreamVideoProps>(function Stre
     let destroy: (() => void) | undefined
 
     async function attach() {
+      if (!src) return
       if (format !== 'hls') {
         video.src = src
         return
@@ -162,6 +163,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, StreamVideoProps>(function Stre
       destroy = () => {hls.destroy();hlsInstance.current=null}
       let recovered = false
       hls.on(Hls.Events.ERROR, (_, data) => {
+        if (disposed) return
         if (!data.fatal) return
         if (data.type === Hls.ErrorTypes.MEDIA_ERROR && !recovered) {
           recovered = true
@@ -176,6 +178,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, StreamVideoProps>(function Stre
         hls.destroy()
       })
       hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        if (disposed) return
         // Some providers return a master playlist even for a chosen quality.
         // Select its highest level before requesting the first media fragment.
         let highest = 0
@@ -204,6 +207,7 @@ const StreamVideo = forwardRef<HTMLVideoElement, StreamVideoProps>(function Stre
     })
     return () => {
       disposed = true
+      video.pause()
       destroy?.()
       video.removeAttribute('src')
       video.load()

@@ -85,8 +85,8 @@ export default function OnlinePlayer({
   progressCallback.current = onProgress
   function capture() {
     const el=video.current
-    if(libraryMedia && el && Number.isFinite(el.duration) && el.duration>0 && el.currentTime>=.2)
-      point.current={episodeId:el.dataset.episodeId || episode.id,time:Math.min(el.currentTime,el.duration),duration:el.duration}
+    if(libraryMedia && el?.dataset.episodeId && Number.isFinite(el.duration) && el.duration>0 && el.currentTime>=.2)
+      point.current={episodeId:el.dataset.episodeId,time:Math.min(el.currentTime,el.duration),duration:el.duration}
   }
   function saveProgress() {
     capture()
@@ -180,6 +180,7 @@ export default function OnlinePlayer({
     const next = matching || item.episodes[0]
     if (next) {
       saveProgress()
+      point.current=null
       const element = video.current
       lineResume.current =
         matching && element
@@ -229,20 +230,20 @@ export default function OnlinePlayer({
       <div className="online-cinema-layout">
         <div className="online-cinema-main">
           <div className="online-cinema-stage" ref={stage}>
-            {stream && (
+            {(
               <CinemaVideo
                 ref={video}
                 title={libraryMedia?.title || result.title}
                 episodeTitle={`${episode.title} · ${result.road}`}
-                src={stream.url}
-                format={stream.format}
+                src={stream?.url || ''}
+                format={stream?.format}
                 autoPlay={!resume.current?.paused}
                 playsInline
-                data-episode-id={episode.id}
+                data-episode-id={stream ? episode.id : undefined}
                 onTimeUpdate={()=>{capture();if(Date.now()-lastSaved.current>5000){lastSaved.current=Date.now();saveProgress()}}}
                 onPause={saveProgress}
                 qualities={qualities}
-                qualityId={stream.id}
+                qualityId={stream?.id}
                 onFullscreen={()=>{void toggleFullscreen().catch(()=>setError('当前窗口暂未允许全屏'))}}
                 onQualityChange={(option) => {
                   const element = video.current
