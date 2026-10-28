@@ -28,6 +28,9 @@ export type WebSourceResult = {
   remarks: string
   checkedAt: string
   checkedEpisode: string
+  height?: number
+  width?: number
+  quality?: string
   episodes: WebEpisode[]
 }
 export default function OnlinePlayer({

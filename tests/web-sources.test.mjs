@@ -4,7 +4,7 @@ import { matchesWork } from '../media-match.mjs'
 import { episodeLayout, seasonNumber } from '../episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from '../stream-probe.mjs'
 import { createWebSources, parsePlayRoads } from '../web-sources.mjs'
-import { rankLevels, qualityLabel } from '../stream-quality.mjs'
+import { rankLevels, qualityLabel, resolutionHeight } from '../stream-quality.mjs'
 
 test('online work matching rejects unrelated titles, wrong seasons, commentary and wrong media categories', () => {
   const check = (name, query = '葬送的芙莉莲 第二季', type = '日韩动漫') =>
@@ -30,6 +30,68 @@ test('online work matching rejects unrelated titles, wrong seasons, commentary a
     }),
     false,
   )
+})
+
+test('TV search excludes same-name films, anime, unknown types and wrong seasons', async () => {
+  const vod = { vod_id: 1, vod_name: '测试剧 第二季', type_name: '国产剧', vod_play_from: 'm3u8', vod_play_url: '第13集$https://cdn.example/tv.m3u8' }
+  const calls = []
+  const service = createWebSources({
+    providers: [
+      { id: 'anime-only', name: '仅动漫', anime: true, api: 'https://anime.example/' },
+      { id: 'tv', name: '影视来源', api: 'https://tv.example/api' },
+    ],
+    fetcher: async url => {
+      calls.push(String(url))
+      return Response.json({ list: [vod, ...['剧情片', '日韩动漫', '综艺', '短剧', ''].map((type, i) => ({ ...vod, vod_id: i + 2, type_name: type })), { ...vod, vod_id: 8, vod_name: '测试剧 第一季' }] })
+    },
+    probe: async source => ({ url: source.url, format: 'hls' }),
+  })
+  const value = await service.search('测试剧 第二季', { category: 'tv' })
+  assert.equal(value.results.length, 1)
+  assert.equal(value.results[0].episodes[0].season, 2)
+  assert.equal(value.results[0].episodes[0].number, 1)
+  assert.equal(calls.some(url => url.includes('anime.example')), false)
+  for (const type of ['欧美剧', '日本剧', '韩国剧', '香港剧', '泰国剧', '海外剧'])
+    assert.equal(matchesWork({ title: '测试剧', type }, '测试剧', { category: 'tv' }), true, type)
+})
+
+test('online search reaches an exact TV title on a later catalog page without accepting the first page short dramas', async () => {
+  const pages = []
+  const service = createWebSources({ providers: [{ id: 'tv', name: '测试来源', api: 'https://tv.example/api' }],
+    fetcher: async url => {
+      const page = Number(new URL(url).searchParams.get('pg') || 1)
+      pages.push(page)
+      return Response.json({ pagecount: 10, list: page === 1
+        ? [{ vod_name: '测试剧之大结局', type_name: '短剧' }]
+        : [{ vod_id: 1, vod_name: '测试剧', type_name: '国产剧', vod_play_url: '01$https://cdn.example/tv.mp4' }] })
+    }, probe: async source => ({ ...source, format: 'file' }),
+  })
+  assert.equal((await service.search('测试剧', { category: 'tv' })).results.length, 1)
+  assert.deepEqual(pages, [1, 2])
+})
+
+test('default online search filters known low resolution, ranks UHD first and keeps unknown resolution honest', async () => {
+  const service = createWebSources({ providers: [{ id: 'tv', name: '测试来源', api: 'https://tv.example/api' }],
+    fetcher: async () => Response.json({ list: [720, 1080, 2160, 0].map(height => ({ vod_id: height, vod_name: '画质测试', type_name: '国产剧', vod_play_url: `01$https://cdn.example/${height}.mp4` })) }),
+    probe: async source => ({ ...source, format: 'file', height: Number(new URL(source.url).pathname.match(/\d+/)[0]) }),
+  })
+  const high = await service.search('画质测试', { category: 'tv' })
+  assert.deepEqual(high.results.map(item => item.height), [2160, 1080, 0])
+  assert.equal(high.results[2].quality, '清晰度待确认')
+  const all = await service.search('画质测试', { category: 'tv', minHeight: 0 })
+  assert.deepEqual(all.results.map(item => item.height), [2160, 1080, 720, 0])
+  assert.equal(resolutionHeight(1920, 800), 1080, 'cropped widescreen film retains its Full HD tier')
+  assert.equal(resolutionHeight(1280, 720), 720)
+})
+
+test('the sampled video resolution overrides inflated playlist labels', async () => {
+  const fetcher = async url => url.endsWith('master.m3u8')
+    ? new Response('#EXTM3U\n#EXT-X-STREAM-INF:BANDWIDTH=100,RESOLUTION=1920x1080\nvideo.m3u8')
+    : url.endsWith('.m3u8') ? new Response('#EXTM3U\n#EXTINF:5,\nvideo.ts') : ts()
+  const actual = await probeStream({ url: 'https://cdn.example/master.m3u8' }, { fetcher, inspect: async () => ({ width: 1280, height: 720, resolutionSource: 'sample' }) })
+  assert.equal(actual.height, 720)
+  assert.equal(actual.variants[0].height, 720)
+  assert.equal(actual.resolutionSource, 'sample')
 })
 test('season episode numbering restarts for explicit paths and a standalone second season while IDs stay intact', () => {
   const episodes = Array.from({ length: 24 }, (_, i) => ({
@@ -61,6 +123,10 @@ test('season episode numbering restarts for explicit paths and a standalone seco
     2,
   )
   assert.equal(seasonNumber('第十二季'), 12)
+  const [road] = parsePlayRoads({ vod_name: '电视剧', vod_play_url: '第01集$https://cdn.example/1.m3u8#第03集$https://cdn.example/3.m3u8#第04集$https://cdn.example/play.html#第05集$https://cdn.example/5.m3u8' })
+  assert.deepEqual(road.episodes.map(ep => ep.number), [1, 3, 5], 'missing or unsupported episodes must not shift the following episode labels')
+  const [season2] = parsePlayRoads({ vod_name: '电视剧 第二季', vod_play_url: '第13集$https://cdn.example/13.m3u8#第15集$https://cdn.example/15.m3u8' })
+  assert.deepEqual(season2.episodes.map(ep => ep.number), [1, 3])
 })
 const ts = () =>
   new Response(Buffer.concat([Buffer.from([0x47]), Buffer.alloc(187)]), {

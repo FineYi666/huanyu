@@ -5,6 +5,7 @@ export type QualityOption = {
   bitrate?: number
 }
 export function qualityLabel(height?: number, name?: string): string
+export function resolutionHeight(width?: number, height?: number): number
 export function rankLevels(
-  levels: { height?: number; bitrate?: number }[],
+  levels: { width?: number; height?: number; bitrate?: number }[],
 ): QualityOption[]

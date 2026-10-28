@@ -47,6 +47,7 @@ import {
   Star,
   Sun,
   Trash2,
+  Tv,
   X,
 } from 'lucide-react'
 import { api } from './api'
@@ -58,6 +59,8 @@ import GamesPage, {
 } from './games'
 import type { AppState, Episode, Game, Media } from './types'
 import MovieDiscovery from './MovieDiscovery'
+import TvSearch from './TvSearch'
+import { mediaCategory, type MediaCategory } from '../media-category.mjs'
 import AppearancePicker, { type AppearancePatch } from './AppearancePicker'
 import DeepSeekSettings from './DeepSeekSettings'
 import { episodeLabel, matchesEpisode } from './episode-labels'
@@ -90,6 +93,7 @@ type Page =
   | 'library'
   | 'anime'
   | 'movies'
+  | 'tv'
   | 'movie-discovery'
   | 'games'
   | 'favorites'
@@ -107,13 +111,17 @@ const pageNames = {
   library: '我的媒体库',
   anime: '动漫',
   movies: '电影',
+  tv: '电视剧',
   'movie-discovery': '豆瓣高分电影',
   games: '游戏空间',
   favorites: '我的收藏',
   history: '观看记录',
 }
-const categoryOf = (media: Media) =>
-  media.category || (media.genre === '电影' ? 'movie' : 'anime')
+const categoryOf = mediaCategory
+const categoryPage = (category: MediaCategory): Page =>
+  category === 'movie' ? 'movies' : category === 'tv' ? 'tv' : 'anime'
+const categoryName = (category?: MediaCategory) =>
+  category === 'movie' ? '电影' : category === 'tv' ? '电视剧' : '动漫'
 const sizeLabel = (size?: number) =>
   !size
     ? ''
@@ -175,7 +183,7 @@ function ImportDialog({
 }: {
   mode: ImportMode
   preset?: string
-  categoryPreset?: 'anime' | 'movie'
+  categoryPreset?: MediaCategory
   subject?: SeasonTitle
   replacement?: Media
   onSearch: (media: Media) => void
@@ -260,7 +268,7 @@ function ImportDialog({
     >
       <p className="dialog-intro">
         {replacement ? `为《${replacement.title}》更换视频。封面、简介与收藏保留；不同文件的观看进度重新记录。新资源确认成功前，原资源会保留。` : subject
-          ? `关联《${subject.title}》，导入后自动沿用新番封面、简介与评分。`
+          ? `关联《${subject.title}》，导入后自动沿用作品封面、简介与评分。`
           : '无论存在硬盘，还是藏在云端，都有一个位置留给它。'}
       </p>
       <div className="import-tabs">
@@ -381,13 +389,14 @@ function ImportDialog({
             ['auto', '自动识别'],
             ['anime', '动漫'],
             ['movie', '电影'],
+            ['tv', '电视剧'],
           ].map(([value, label]) => (
             <button
               type="button"
               key={value}
               className={category === value ? 'active' : ''}
               aria-pressed={category === value}
-              disabled={Boolean(replacement) || (Boolean(subject) && value !== 'anime')}
+              disabled={Boolean(replacement) || Boolean(subject)}
               onClick={() => setCategory(value)}
             >
               {label}
@@ -398,7 +407,7 @@ function ImportDialog({
           作品名称{' '}
           <span>
             {replacement ? '作品资料保持不变，可在详情页编辑' : subject
-              ? '已关联此新番，可在导入后的详情页编辑'
+              ? '已关联此作品，可在导入后的详情页编辑'
               : '可选，留空则自动识别'}
           </span>
           <input
@@ -684,10 +693,11 @@ function DetailDialog({
             作品区域
             <select
               value={category}
-              onChange={(e) => setCategory(e.target.value as 'anime' | 'movie')}
+              onChange={(e) => setCategory(e.target.value as MediaCategory)}
             >
               <option value="anime">动漫</option>
               <option value="movie">电影</option>
+              <option value="tv">电视剧</option>
             </select>
           </label>
           <label className="field">
@@ -1815,9 +1825,9 @@ export default function App() {
           .toLowerCase()
           .includes(query.trim().toLowerCase()),
       )
-    if (page === 'anime' || page === 'movies')
+    if (page === 'anime' || page === 'movies' || page === 'tv')
       items = items.filter(
-        (m) => categoryOf(m) === (page === 'movies' ? 'movie' : 'anime'),
+        (m) => categoryOf(m) === (page === 'movies' ? 'movie' : page === 'tv' ? 'tv' : 'anime'),
       )
     if (genre !== '全部') items = items.filter((m) => m.genre === genre)
     if (source !== 'all') items = items.filter((m) => m.source === source)
@@ -1935,6 +1945,7 @@ export default function App() {
               { id: 'home', icon: LayoutGrid, label: '新番' },
               { id: 'anime', icon: Play, label: '动漫' },
               { id: 'movies', icon: Film, label: '电影' },
+              { id: 'tv', icon: Tv, label: '电视剧' },
               { id: 'movie-discovery', icon: Star, label: '高分电影' },
               { id: 'games', icon: Gamepad2, label: '游戏' },
               { id: 'favorites', icon: Heart, label: '收藏' },
@@ -1965,7 +1976,7 @@ export default function App() {
               <Search size={17} />
               <input
                 ref={search}
-                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'movies' ? '搜索我的电影' : '搜索你想看的故事'}
+                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'movies' ? '搜索我的电影' : page === 'tv' ? '搜索电视剧名称' : '搜索你想看的故事'}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label="搜索作品"
@@ -2046,6 +2057,8 @@ export default function App() {
                       ? '按片名寻找，按类型探索，把喜欢的电影收进片库。'
                     : page === 'movies'
                       ? '为完整的一场光影，留一个专门的位置。'
+                      : page === 'tv'
+                        ? '收藏云端剧集，寻找在线片源，把每一季的故事接着看。'
                       : page === 'library'
                         ? `${real.length} 部作品，${real.reduce((n, m) => n + m.episodes.length, 0)} 个视频，都是你的珍藏。`
                         : page === 'games'
@@ -2069,7 +2082,7 @@ export default function App() {
                 onClick={() => setMenu(!menu)}
                 aria-expanded={menu}
               >
-                <Plus size={18} /> 导入资源 <ChevronDown size={15} />
+                <Plus size={18} /> {page === 'tv' ? '导入电视剧' : '导入资源'} <ChevronDown size={15} />
               </button>
               {menu && (
                 <>
@@ -2249,12 +2262,13 @@ export default function App() {
             </section>
           )}
           {page === 'movie-discovery' && <MovieDiscovery query={query} onClearSearch={() => setQuery('')} onResource={setResourceTarget} onOpen={setSelected} media={media} />}
+          {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
               {page === 'movies' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
               <div className="library-heading">
                 <div className="section-title">
-                  <h2>{query ? '搜索结果' : pageNames[page]}</h2>
+                  <h2>{page === 'tv' ? query ? '片库中匹配的电视剧' : '我的追剧片库' : query ? '搜索结果' : pageNames[page]}</h2>
                   <span className="count-label">{visible.length} 部作品</span>
                   {['anime', 'movies'].includes(page) &&
                     state?.settings.showSamples && (
@@ -2294,8 +2308,7 @@ export default function App() {
               </div>
               <div className="filter-bar">
                 <div className="genre-tabs">
-                  {genres
-                    .filter((g) => g !== '电影')
+                  {(page === 'tv' ? ['全部', ...new Set(media.filter(item => categoryOf(item) === 'tv').map(item => item.genre).filter((value): value is string => Boolean(value) && value !== '未分类'))] : genres.filter(g => g !== '电影'))
                     .map((g) => (
                       <button
                         className={genre === g ? 'active' : ''}
@@ -2316,7 +2329,7 @@ export default function App() {
                     <option value="all">全部来源</option>
                     <option value="local">本地视频</option>
                     <option value="quark">夸克网盘</option>
-                    {page !== 'library' && (
+                    {page !== 'library' && page !== 'tv' && (
                       <option value="sample">示例片单</option>
                     )}
                   </select>
@@ -2485,7 +2498,7 @@ export default function App() {
                   <p>
                     {query || genre !== '全部' || source !== 'all'
                       ? '试试其他关键词，或切换分类与资源来源。'
-                      : '导入本地视频或夸克分享链接，让喜欢的故事有个家。'}
+                      : page === 'tv' ? '导入夸克电视剧，或在上方搜索在线片源直接播放。' : '导入本地视频或夸克分享链接，让喜欢的故事有个家。'}
                   </p>
                   {query || genre !== '全部' || source !== 'all' ? (
                     <button
@@ -2501,10 +2514,10 @@ export default function App() {
                   ) : (
                     <button
                       className="button primary"
-                      onClick={() => setImporting({ mode: 'local' })}
+                      onClick={() => setImporting({ mode: page === 'tv' ? 'quark' : 'local' })}
                     >
                       <Plus size={17} />
-                      导入我的第一部作品
+                      {page === 'tv' ? '导入我的第一部电视剧' : '导入我的第一部作品'}
                     </button>
                   )}
                 </div>
@@ -2553,7 +2566,7 @@ export default function App() {
       )}
       {resourceTarget && (
         <Dialog
-          title={resourceTarget.category === 'movie' ? '查找电影片源' : '查找夸克资源'}
+          title={resourceTarget.category === 'movie' ? '查找电影片源' : resourceTarget.category === 'tv' ? '查找电视剧片源' : '查找夸克资源'}
           className="resource-dialog"
           onClose={() => {
             if (!resourceBusy) setResourceTarget(null)
@@ -2575,8 +2588,8 @@ export default function App() {
               setState(data)
               setResourceTarget(null)
               setSelected(ids[0] || null)
-              nav(categoryOf(data.media.find(media => media.id === ids[0]) || ({} as Media)) === 'movie' ? 'movies' : 'anime')
-              notify(resourceTarget.replaceMediaId ? `已替换为 ${count} 个视频，作品资料与收藏已保留` : `已将 ${count} 个视频导入${resourceTarget.category === 'movie' ? '电影' : '动漫'}区`)
+              nav(categoryPage(categoryOf(data.media.find(media => media.id === ids[0]) || ({} as Media))))
+              notify(resourceTarget.replaceMediaId ? `已替换为 ${count} 个视频，作品资料与收藏已保留` : `已将 ${count} 个视频导入${categoryName(resourceTarget.category)}区`)
             }}
           />
         </Dialog>
@@ -2589,13 +2602,15 @@ export default function App() {
           replacement={importing.replacement}
           onSearch={(media) => {
             setImporting(null)
-            setResourceTarget({id: media.subjectId || '', title: media.title, subtitle: '', description: media.description || '', image: media.cover || '', replaceMediaId: media.id})
+            setResourceTarget({id: media.subjectId || '', title: media.title, subtitle: media.subtitle || '', description: media.description || '', image: media.cover || '', category: categoryOf(media), replaceMediaId: media.id})
           }}
           categoryPreset={
             importing.replacement ? categoryOf(importing.replacement) : importing.subject
               ? importing.subject.category || 'anime'
               : page === 'movies'
                 ? 'movie'
+                : page === 'tv'
+                  ? 'tv'
                 : page === 'anime'
                   ? 'anime'
                   : undefined
@@ -2605,13 +2620,7 @@ export default function App() {
             setState(data)
             setImporting(null)
             setSelected(ids.length === 1 ? ids[0] : null)
-            setPage(
-              categoryOf(
-                data.media.find((m) => m.id === ids[0]) || ({} as Media),
-              ) === 'movie'
-                ? 'movies'
-                : 'anime',
-            )
+            setPage(categoryPage(categoryOf(data.media.find((m) => m.id === ids[0]) || ({} as Media))))
             setGenre('全部')
             setSource('all')
             setQuery('')

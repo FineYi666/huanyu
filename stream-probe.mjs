@@ -1,4 +1,7 @@
 import { isIP } from 'node:net'
+import { createDecipheriv } from 'node:crypto'
+import { inspectVideoSample } from './video-resolution.mjs'
+import { readMp4Index } from './mp4-subtitles.mjs'
 export function publicVideoUrl(value, base) {
   const url = new URL(value, base),
     host = url.hostname.replace(/^\[|\]$/g, '').toLowerCase()
@@ -66,7 +69,7 @@ async function bytes(response, limit) {
   }
   return Buffer.concat(chunks, size)
 }
-export async function probeStream(source, { fetcher = fetch } = {}, depth = 0) {
+export async function probeStream(source, { fetcher = fetch, inspect = inspectVideoSample } = {}, depth = 0) {
   if (depth > 3) throw new Error('播放列表层级过多')
   const { response, url } = await fetchPublicVideo(source.url, {
     fetcher,
@@ -107,16 +110,19 @@ export async function probeStream(source, { fetcher = fetch } = {}, depth = 0) {
         try {
           const child = await probeStream(
             { ...source, url: variant.url },
-            { fetcher },
+            { fetcher, inspect },
             depth + 1,
           )
-          verified.push({ ...variant, url: child.url, format: 'hls' })
+          verified.push({ ...variant, ...(child.height ? { height: child.height, width: child.width || variant.width } : {}), resolutionSource: child.resolutionSource || 'manifest', url: child.url, format: 'hls' })
         } catch {}
+      verified.sort((a,b) => b.height - a.height || b.bitrate - a.bitrate)
       if (verified.length)
         return {
           url: verified[0].url,
           format: 'hls',
           height: verified[0].height,
+          width: verified[0].width,
+          resolutionSource: verified[0].resolutionSource,
           variants: verified,
         }
       throw new Error('所有清晰度线路均无法读取')
@@ -128,9 +134,10 @@ export async function probeStream(source, { fetcher = fetch } = {}, depth = 0) {
     const sample = await fetchPublicVideo(publicVideoUrl(segment, url), {
         fetcher,
         headers: source.headers,
-        range: 'bytes=0-1023',
+        range: 'bytes=0-262143',
       }),
-      data = await bytes(sample.response, 1024)
+      data = await bytes(sample.response, 262144)
+    let videoBytes = data
     if (
       !data.length ||
       /^\s*(?:<!doctype|<html|\{)/i.test(data.toString('utf8'))
@@ -147,8 +154,18 @@ export async function probeStream(source, { fetcher = fetch } = {}, depth = 0) {
         fetcher,
         headers: source.headers,
       })
-      if ((await bytes(k.response, 17)).length !== 16)
+      const keyBytes = await bytes(k.response, 17)
+      if (keyBytes.length !== 16)
         throw new Error('视频密钥无法读取')
+      try {
+        const iv = Buffer.alloc(16)
+        const explicit = key.match(/IV=0x([0-9a-f]{1,32})/i)?.[1]
+        if (explicit) Buffer.from(explicit.padStart(32, '0'), 'hex').copy(iv)
+        else iv.writeBigUInt64BE(BigInt(lines.find(line => line.startsWith('#EXT-X-MEDIA-SEQUENCE:'))?.split(':')[1] || 0), 8)
+        const decipher = createDecipheriv('aes-128-cbc', keyBytes, iv)
+        decipher.setAutoPadding(false)
+        videoBytes = decipher.update(data.subarray(0, Math.floor(data.length / 16) * 16))
+      } catch { videoBytes = Buffer.alloc(0) }
     } else if (
       data[0] !== 0x47 &&
       !['ftyp', 'styp', 'moof', 'moov'].includes(
@@ -164,18 +181,40 @@ export async function probeStream(source, { fetcher = fetch } = {}, depth = 0) {
       const init = await fetchPublicVideo(publicVideoUrl(map, url), {
         fetcher,
         headers: source.headers,
-        range: 'bytes=0-63',
+        range: 'bytes=0-65535',
       })
-      const data = await bytes(init.response, 64)
+      const data = await bytes(init.response, 65536)
       if (!['ftyp', 'styp', 'moov'].includes(data.subarray(4, 8).toString()))
         throw new Error('视频初始化分段无法读取')
+      videoBytes = Buffer.concat([data, videoBytes])
     }
-    return { url, format: 'hls' }
+    const resolution = await inspect(videoBytes)
+    return { url, format: 'hls', ...resolution }
   }
   if (
     buffer.subarray(4, 8).toString() === 'ftyp' ||
     buffer.subarray(0, 4).equals(Buffer.from([0x1a, 0x45, 0xdf, 0xa3]))
-  )
-    return { url, format: 'file' }
+  ) {
+    let resolution = await inspect(buffer)
+    if (!resolution && buffer.subarray(4, 8).toString() === 'ftyp') {
+      let requests = 0, consumed = 0
+      try {
+        const index = await readMp4Index({ url }, async (_, start, length) => {
+          if (++requests > 10 || (consumed += length) > 2 * 1024 * 1024) throw new Error('Resolution index exceeds budget')
+          const part = await fetchPublicVideo(url, { fetcher, headers: source.headers, range: `bytes=${start}-${start + length - 1}` })
+          if (part.response.status !== 206 || !part.response.headers.get('content-range')?.startsWith(`bytes ${start}-`)) {
+            await part.response.body?.cancel().catch(() => {})
+            throw new Error('Precise ranges unavailable')
+          }
+          const data = await bytes(part.response, length)
+          if (data.length !== length) throw new Error('Incomplete resolution index')
+          return data
+        })
+        const track = index.tracks.find(track => track.width && track.height)
+        if (track) resolution = { width: track.width, height: track.height, resolutionSource: 'sample' }
+      } catch {}
+    }
+    return { url, format: 'file', ...resolution }
+  }
   throw new Error('播放源返回网页或无法识别的视频内容')
 }

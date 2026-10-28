@@ -12,7 +12,7 @@ import {
   VolumeX,
 } from 'lucide-react'
 import StreamVideo, { type StreamVideoProps } from './StreamVideo'
-import { qualityLabel, type QualityOption } from '../stream-quality.mjs'
+import { qualityLabel, resolutionHeight, type QualityOption } from '../stream-quality.mjs'
 
 export type PlaybackQuality = {
   id: string
@@ -95,7 +95,7 @@ const CinemaVideo = forwardRef<HTMLVideoElement, Props>(function CinemaVideo(
       setVolume(element.volume)
       setMuted(element.muted)
       setRate(element.playbackRate)
-      setHeight(element.videoHeight)
+      setHeight(resolutionHeight(element.videoWidth, element.videoHeight))
     }
     const ready = () => {
         setWaiting(false)

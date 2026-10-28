@@ -1,0 +1,33 @@
+.tv-search { margin-bottom: 32px; border: 1px solid var(--border); border-radius: 23px; background: rgb(var(--glass-rgb) / .36); overflow: hidden; box-shadow: inset 0 1px 0 rgb(var(--glass-edge-rgb) / .24); }
+.tv-search-intro { display: grid; grid-template-columns: minmax(210px, .8fr) minmax(0, 1.2fr); align-items: center; gap: 60px; padding: 34px 36px; background: radial-gradient(ellipse at 0 0, rgb(var(--accent-rgb) / .12), transparent 65%); }
+.tv-search-copy .season-kicker { display: flex; align-items: center; gap: 9px; color: var(--green); }
+.tv-search-copy h2 { font-size: clamp(25px, 2.6vw, 39px); line-height: 1.35; letter-spacing: -1px; margin: 14px 0; font-weight: 650; text-wrap: balance; }
+.tv-search-copy p { font-size: 12px; line-height: 1.9; color: var(--secondary); max-width: 350px; }
+.tv-query > label { display: block; font-size: 13px; margin-bottom: 12px; font-weight: 550; }
+.tv-query > div { display: flex; align-items: center; gap: 11px; padding: 7px 7px 7px 17px; border: 1px solid var(--border); border-radius: 15px; background: rgb(var(--panel-rgb) / .5); }
+.tv-query > div > svg { flex-shrink: 0; color: var(--green); }
+.tv-query input { min-width: 0; flex: 1; border: 0; padding: 10px 0; background: transparent; color: var(--text); font-size: 12px; }
+.tv-query input:focus { outline: 0; }
+.tv-query > div:focus-within { outline: 2px solid rgb(var(--accent-rgb) / .7); outline-offset: 3px; }
+.tv-query .button { white-space: nowrap; padding: 12px 15px; font-size: 12px; }
+.tv-import-hint { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-top: 16px; font-size: 12px; color: var(--secondary); }
+.tv-import-hint button { display: flex; align-items: center; gap: 7px; color: var(--green); padding: 6px 0; white-space: nowrap; }
+.tv-search-note { font-size: 10px; line-height: 1.8; color: var(--secondary); margin-top: 17px; }
+.tv-quality-filter { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--text); margin-top: 16px; cursor: pointer; }.tv-quality-filter input { accent-color: var(--green); }.tv-quality-filter > span { color: var(--green); font-size: 10px; font-variant-numeric: tabular-nums; }
+.tv-search-results { border-top: 1px solid var(--border); padding: 24px 30px; }
+.tv-result-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.tv-result-heading h3 { font-size: 16px; font-weight: 600; }.tv-result-heading > span { font-size: 11px; color: var(--secondary); }
+.tv-source-status { display: flex; flex-wrap: wrap; gap: 7px; margin: 16px 0; }
+.tv-source-status > span { display: flex; gap: 10px; align-items: center; padding: 6px 10px; border-radius: 7px; background: rgb(var(--accent-rgb) / .08); color: var(--text); font-size: 11px; }
+.tv-source-status small { color: var(--green); font-size: 10px; }.tv-source-status .unavailable { opacity: .65; }.tv-source-status .unavailable small { color: var(--secondary); }
+.web-sources-head > strong { display: flex; gap: 7px; align-items: center; }
+.web-source-card > .poster-art { width: 75px; height: 103px; border-radius: 9px; flex: 0 0 auto; }
+.web-source-card > .poster-art img { width: 100%; height: 100%; object-fit: cover; }
+.web-source-copy > .online-quality { display: inline-flex; margin: 5px 0 4px; padding: 4px 8px; border-radius: 5px; background: rgb(var(--accent-rgb) / .08); color: var(--secondary); font-size: 10px; }.web-source-copy > .online-quality.confirmed { color: var(--green); font-weight: 600; }
+.web-source-episodes .online-play-entry { display: inline-flex; align-items: center; gap: 5px; color: var(--green); }
+.online-episode-grid { max-height: 200px; overflow-y: auto; padding: 4px; margin: 8px -4px 0; }
+.online-no-results { padding: 28px 10px; text-align: center; }.online-no-results h3 { font-size: 14px; }.online-no-results p { font-size: 12px; color: var(--secondary); margin-top: 8px; }
+/* Eight navigation destinations must also fit in a normal desktop window. */
+@media (min-width: 1201px) and (max-width: 1500px) { html .app-shell .topbar { gap: 16px; padding-inline: 24px; } html .app-shell .main-nav .nav-item { padding-inline: 12px; } html .app-shell .search-box { width: 175px; } html .app-shell .wordmark > span { display: none; } }
+@media (max-width: 900px) { .tv-search-intro { grid-template-columns: 1fr; gap: 23px; padding: 26px; }.tv-search-copy h2 br { display: none; }.tv-search-copy p { max-width: 500px; }.tv-search-results { padding: 22px; } }
+@media (max-width: 600px) { .tv-search-intro { padding: 22px 18px; }.tv-query > div { flex-wrap: wrap; padding: 10px; }.tv-query .button { width: 100%; justify-content: center; }.tv-search-results { padding: 18px 14px; }.tv-import-hint { flex-wrap: wrap; gap: 4px; } html .app-shell .main-nav { overflow-x: auto; justify-content: flex-start; } }

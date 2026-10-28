@@ -423,7 +423,7 @@ export function applyMetadata(media, info, cover) {
     media.description = info.description
   if (!manual.genre && info.genre) media.genre = info.genre
   if (!manual.category && info.kind)
-    media.category = info.kind === 'movie' ? 'movie' : 'anime'
+    media.category = info.kind === 'series' ? 'tv' : info.kind === 'movie' ? 'movie' : 'anime'
   if (!manual.cover && cover) media.cover = cover
   if (info.year) media.year = info.year
   if (info.originalTitle || info.englishTitle)

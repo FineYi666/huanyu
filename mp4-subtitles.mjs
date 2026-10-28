@@ -105,6 +105,7 @@ export async function readMp4Index(source, read = readMediaRange) {
       codec: entry?.type === 'tx3g' ? 'mov_text' : entry?.type === 'wvtt' ? 'webvtt' : track.codec,
       language: track.language || 'und', title: track.name || '',
       isSubtitle,
+      width: track.video?.width || 0, height: track.video?.height || 0,
       timescale: track.timescale, duration: track.duration / track.timescale,
       movieTimescale: info.timescale, edits: track.edits || [],
       samples: samples.map(sample => ({ offset: sample.offset, size: sample.size, cts: sample.cts, duration: sample.duration })),

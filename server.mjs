@@ -18,13 +18,13 @@ import { createPosterCache } from './poster-cache.mjs'
 import { createLocalBrowser } from './local-browser.mjs'
 import { createQuarkLogin } from './quark-login.mjs'
 import { fetchVideoSource, rewritePlaylist } from './video-stream.mjs'
-import { mediaCategory } from './media-category.mjs'
+import { mediaCategory, MEDIA_CATEGORIES } from './media-category.mjs'
 import { createResourceSearch } from './resource-search.mjs'
 import { createGameResourceSearch } from './game-resources.mjs'
 import { createMovieCatalog } from './movie-catalog.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
 import { createWebSources } from './web-sources.mjs'
-import { qualityLabel } from './stream-quality.mjs'
+import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 import { publicVideoUrl } from './stream-probe.mjs'
 import { episodeLayout } from './episode-seasons.mjs'
 import { attachSeasonalMetadata } from './seasonal-metadata.mjs'
@@ -608,7 +608,7 @@ const server = http.createServer(async (req, res) => {
             existing.title = input.title.trim().slice(0, 150)
             existing.manual = { ...existing.manual, title: true }
           }
-          if (['anime', 'movie'].includes(input.category)) {
+          if (MEDIA_CATEGORIES.includes(input.category)) {
             existing.category = input.category
             existing.manual = { ...existing.manual, category: true }
           }
@@ -630,14 +630,14 @@ const server = http.createServer(async (req, res) => {
             year: match?.year,
             episodes: items,
             source: 'local',
-            category: ['anime', 'movie'].includes(input.category)
+            category: MEDIA_CATEGORIES.includes(input.category)
               ? input.category
               : mediaCategory(match || {}),
             genre: input.genre || match?.genre || '未分类',
             addedAt: Date.now(),
             manual: {
               title: Boolean(input.title?.trim()),
-              category: ['anime', 'movie'].includes(input.category),
+              category: MEDIA_CATEGORIES.includes(input.category),
             },
           })
         }
@@ -680,7 +680,7 @@ const server = http.createServer(async (req, res) => {
           year: match.year,
         })
       const existing = state.media.find((item) => item.id === media.id)
-      if (['anime', 'movie'].includes(input.category))
+      if (MEDIA_CATEGORIES.includes(input.category))
         media.category = input.category
       if (existing) {
         const oldEpisodes = new Map(
@@ -703,7 +703,7 @@ const server = http.createServer(async (req, res) => {
           manual: {
             ...existing.manual,
             ...(input.title?.trim() ? { title: true } : {}),
-            ...(['anime', 'movie'].includes(input.category)
+            ...(MEDIA_CATEGORIES.includes(input.category)
               ? { category: true }
               : {}),
           },
@@ -711,7 +711,7 @@ const server = http.createServer(async (req, res) => {
       } else {
         media.manual = {
           title: Boolean(input.title?.trim()),
-          category: ['anime', 'movie'].includes(input.category),
+          category: MEDIA_CATEGORIES.includes(input.category),
           ...(subject
             ? { title: true, description: true, cover: true, category: true }
             : {}),
@@ -845,7 +845,7 @@ const server = http.createServer(async (req, res) => {
       if (!media) return json(res, { error: '作品不存在' }, 404)
       if (req.method === 'PATCH') {
         const input = await body(req)
-        if (['anime', 'movie'].includes(input.category)) {
+        if (MEDIA_CATEGORIES.includes(input.category)) {
           media.category = input.category
           media.manual = { ...media.manual, category: true }
         }
@@ -928,7 +928,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, { error: '请输入 2 个字以上的名称' }, 400)
       const subject = await Promise.resolve(importSubject(input.subjectId)).catch(() => null)
       const aliases = subject && [subject.title, subject.subtitle].includes(keyword) ? [subject.title, subject.subtitle] : []
-      return json(res, await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime' }))
+      return json(res, await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime', minHeight: input.minHeight }))
     }
     if (route === '/api/web-sources/report' && req.method === 'POST') {
       const input = await body(req)
@@ -945,7 +945,7 @@ const server = http.createServer(async (req, res) => {
         ...source,
         expires: Date.now() + 4 * 3600000,
       })
-      const qualities=(source.variants||[]).map((variant,index)=>{const variantToken=index===0?token:randomUUID();if(index!==0)streamCache.set(variantToken,{...variant,headers:source.headers,web:true,expires:Date.now()+4*3600000});return{id:`quality-${index}`,label:qualityLabel(variant.height),url:`/api/stream/${variantToken}`,format:variant.format}})
+      const qualities=(source.variants?.length ? source.variants : [source]).map((variant,index)=>{const variantToken=index===0?token:randomUUID();if(index!==0)streamCache.set(variantToken,{...variant,headers:source.headers,web:true,expires:Date.now()+4*3600000});return{id:`quality-${index}`,label:qualityLabel(resolutionHeight(variant.width,variant.height)),url:`/api/stream/${variantToken}`,format:variant.format}})
       return json(res, { url: `/api/stream/${token}`, format: source.format,qualities })
     }
     if (route === '/api/games/resource-search' && req.method === 'GET') {

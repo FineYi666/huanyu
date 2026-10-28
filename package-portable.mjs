@@ -34,6 +34,7 @@ for (const file of [
   'episode-seasons.mjs',
   'stream-probe.mjs',
   'stream-quality.mjs',
+  'video-resolution.mjs',
   'rendered-search.mjs',
   'video-stream.mjs',
   'subtitles.mjs',

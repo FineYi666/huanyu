@@ -1,5 +1,6 @@
 import type { SkinId } from './skins'
 import type { SubtitleStyle } from '../subtitle-style.mjs'
+import type { MediaCategory } from '../media-category.mjs'
 
 declare global {
   interface Window {
@@ -33,7 +34,7 @@ export interface Episode {
 }
 export interface Media {
   subjectId?: string
-  category?: 'anime' | 'movie'
+  category?: MediaCategory
   id: string
   title: string
   subtitle?: string

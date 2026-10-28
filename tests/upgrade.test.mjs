@@ -25,6 +25,19 @@ test('separate anime and movie areas infer legacy films and retain manually chos
   assert.equal(automatic.category, 'movie')
 })
 
+test('TV metadata and legacy series enter their own area while manual categories remain authoritative', () => {
+  assert.equal(mediaCategory({ category: 'tv' }), 'tv')
+  assert.equal(mediaCategory({ category: 'anime', metadataInfo: { kind: 'series' } }), 'tv')
+  assert.equal(mediaCategory({ genre: '电视剧' }), 'tv')
+  assert.equal(mediaCategory({ category: 'anime', manual: { category: true }, metadataInfo: { kind: 'series' } }), 'anime')
+  const media = { manual: {} }
+  applyMetadata(media, { kind: 'series', title: '电视剧' }, null)
+  assert.equal(media.category, 'tv')
+  media.manual.category = true
+  applyMetadata(media, { kind: 'anime', title: '新的识别结果' }, null)
+  assert.equal(media.category, 'tv')
+})
+
 test('quarter catalog includes unscored and upcoming TV/WEB while excluding films and other quarters', () => {
   const season = seasonAt(new Date('2026-10-24T08:00:00Z'))
   const item = {

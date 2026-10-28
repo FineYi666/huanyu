@@ -25,6 +25,10 @@ export function matchesWork(candidate, query, { aliases = [], category } = {}) {
   )
     return false
   const kind = String(candidate.type || candidate.type_name || '')
+  if (category === 'tv' && (
+    /动漫|动画|動畫|综艺|綜藝|电影|電影|解说|解說|短剧|短劇/.test(kind) ||
+    !/电视剧|電視劇|连续剧|連續劇|国产剧|國產劇|欧美剧|歐美劇|美剧|英剧|日剧|韩剧|韓劇|日本剧|韩国剧|泰剧|泰国剧|海外剧|香港剧|台湾剧|台灣劇|港台剧|港剧|台剧|新马剧|新加坡剧|马来西亚剧|其他剧|series|drama/i.test(kind)
+  )) return false
   if (category === 'anime' && kind && !/动漫|动画|動畫|番剧|番劇/.test(kind))
     return false
   if (

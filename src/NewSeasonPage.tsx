@@ -13,7 +13,9 @@ import {
   History,
 } from 'lucide-react'
 import { api } from './api'
-import OnlinePlayer,{type WebSourceResult,type WebEpisode} from './OnlinePlayer'
+import type { WebSourceResult } from './OnlinePlayer'
+import OnlineSources from './OnlineSources'
+import type { MediaCategory } from '../media-category.mjs'
 import Dialog from './ui'
 import HeroCarousel from './HeroCarousel'
 import Poster from './Poster'
@@ -22,7 +24,7 @@ import type { AppState, Media } from './types'
 import { episodeLabel } from './episode-labels'
 
 export type SeasonTitle = {
-  category?: 'anime' | 'movie'
+  category?: MediaCategory
   replaceMediaId?: string
   id: string
   title: string
@@ -491,8 +493,6 @@ export function ResourceSearch({
   const abort = useRef<AbortController | null>(null)
   const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
-  const [webOpen, setWebOpen] = useState<string | null>(null)
-  const [webPlaying, setWebPlaying] = useState<{result:WebSourceResult;episode:WebEpisode}|null>(null)
   const [webError, setWebError] = useState('')
   const webRevision=useRef(0)
   async function loadWebSources(keyword: string) {
@@ -578,12 +578,12 @@ export function ResourceSearch({
           <img src={subject.image} alt="" referrerPolicy="no-referrer" />
         )}
         <div>
-          <span className="season-kicker">{subject.category === 'movie' ? 'MOVIE SOURCES' : 'QUARK RESOURCES'}</span>
+          <span className="season-kicker">{subject.category === 'movie' ? 'MOVIE SOURCES' : subject.category === 'tv' ? 'SERIES SOURCES' : 'QUARK RESOURCES'}</span>
           <h3>{subject.title}</h3>
           <p>
             {subject.description ||
               subject.subtitle ||
-              '搜索这部新番的夸克网盘分享。'}
+              '搜索这部作品的夸克网盘分享。'}
           </p>
           {subject.sourceUrl && (
             <a
@@ -730,73 +730,7 @@ export function ResourceSearch({
           </p>
         </div>
       ) : null}
-      <div className="web-sources-block">
-        <div className="web-sources-head">
-          <strong>在线片源 · 已校验入口</strong>
-          <span>核对片名、季度与类型；已检查推荐入口，其他集播放前再次校验</span>
-        </div>
-        {webBusy ? (
-          <div className="season-empty">
-            <LoaderCircle size={24} className="spin" />
-            <h3>正在聚合在线片源…</h3>
-          </div>
-        ) : webError ? (
-          <p className="web-sources-error">{webError}</p>
-        ) : webSources && webSources.length ? (
-          <div className="web-source-list">
-            {webSources.map((item) => (
-              <div className="web-source-card" key={item.id}>
-                <img
-                  src={item.cover}
-                  alt=""
-                  loading="lazy"
-                  onError={(event) => {
-                    event.currentTarget.style.visibility = 'hidden'
-                  }}
-                />
-                <div className="web-source-copy">
-                  <h4>{item.title}</h4>
-                  <span>
-                    {item.sourceName} · {item.road}
-                    {item.year ? ` · ${item.year}` : ''}
-                    {item.remarks ? ` · ${item.remarks}` : ''} ·{' '}
-                    {item.episodes.length} 集
-                  </span>
-                  <div className="web-source-episodes">
-                    {webOpen === item.id ? (
-                      item.episodes.map((episode) => (
-                        <button
-                          key={episode.id}
-                          type="button"
-                          onClick={() =>
-                            setWebPlaying({result:item,episode})
-                          }
-                        >
-                          {episode.title}
-                        </button>
-                      ))
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setWebOpen(item.id)
-                        }}
-                      >
-                        展开 {item.episodes.length} 集
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : webSources ? (
-          <p className="web-sources-error">
-            暂无名称、季度与播放校验均通过的在线片源，可尝试其他关键词或导入夸克分享。
-          </p>
-        ) : null}
-      </div>
-      {webPlaying&&<OnlinePlayer initialResult={webPlaying.result} initialEpisode={webPlaying.episode} results={webSources||[]} onClose={()=>setWebPlaying(null)} onInvalid={(resultId,episodeId)=>setWebSources(items=>items?.map(item=>item.id===resultId?{...item,episodes:item.episodes.filter(episode=>episode.id!==episodeId)}:item).filter(item=>item.episodes.length)||[])} />}
+      <OnlineSources results={webSources} busy={webBusy} error={webError} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <div className="resource-fallback-actions">
         <button
           className="button outline"
