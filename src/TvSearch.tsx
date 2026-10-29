@@ -7,6 +7,7 @@ import QuarkResults from './QuarkResults'
 import SiteVerificationNotice, { type VerificationSource } from './SiteVerificationNotice'
 import SearchSitesButton from './SearchSitesButton'
 import { api } from './api'
+import {searchOnlineSources} from './web-source-search'
 import type { AppState, Media } from './types'
 
 type SourceStatus = VerificationSource & { name: string; status: string; count: number; message?: string }
@@ -46,21 +47,22 @@ export default function TvSearch({ query, onQuery, onImport, onImported, media, 
     setSearched(keyword)
     setSearchedUhd(uhd)
     try {
-      const response = await fetch('/api/web-sources/search', {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ keyword, category: 'tv', minHeight: uhd ? 1080 : 0 }), signal: controller.signal,
+      await searchOnlineSources({keyword,category:'tv',minHeight:uhd?1080:0,refresh:true},controller.signal,data=>{
+        if(controller.signal.aborted)return
+        setResults(data.results||[]);setSources(data.sources||[]);setBusy(Boolean(data.pending))
+        if(data.partial)setError('部分网站响应较慢，已保留当前结果，可稍后重搜。')
       })
-      const data = await response.json()
-      if (controller.signal.aborted) return
-      if (!response.ok) throw new Error(data.error || '搜索暂时不可用，请稍后重试')
-      setResults(data.results || [])
-      setSources(data.sources || [])
     } catch (err) {
       if (!controller.signal.aborted) setError((err as Error).message)
     } finally {
       if (!controller.signal.aborted) setBusy(false)
     }
   }
+  useEffect(()=>{
+    const changed=()=>{if(searched)void search()}
+    window.addEventListener('huanyu:search-sites-changed',changed)
+    return()=>window.removeEventListener('huanyu:search-sites-changed',changed)
+  },[query,uhd,searched])
   const stale = searched !== query.trim() || searchedUhd !== uhd
   async function importResource(resource: QuarkResource) {
     setImporting(resource.id); setImportError('')
@@ -90,7 +92,7 @@ export default function TvSearch({ query, onQuery, onImport, onImported, media, 
     </div>
     {(busy || error || results) && <div className="tv-search-results">
       {searched && <div className="tv-result-heading"><h3>“{searched}”的播放资源</h3>{stale && <span>关键词或画质条件已更改，点击搜索更新结果</span>}</div>}
-      {!!sources.length && <div className="tv-source-status">{sources.map(source => <span key={source.name} title={source.message} className={source.status === 'error' ? 'unavailable' : ''}>{source.name}<small>{source.count ? `${source.count} 条线路` : source.status === 'error' ? '暂不可用' : source.message || '未收录'}</small></span>)}</div>}
+      {!!sources.length && <div className="tv-source-status">{sources.map(source => <span key={source.name} title={source.message} className={source.status === 'error' ? 'unavailable' : ''}>{source.name}<small>{source.count ? `${source.count} 条线路` : source.status==='loading'?'查询中…':source.status === 'error' ? '暂不可用' : source.message || '未收录'}</small></span>)}</div>}
       <OnlineSources results={results} busy={busy} error={error} library={media} onLibraryChange={onLibraryChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setResults(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <SiteVerificationNotice sources={sources} onVerified={()=>void search()} />

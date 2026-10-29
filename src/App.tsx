@@ -1542,10 +1542,12 @@ export default function App() {
       if (!document.hidden) refresh()
     }
     window.addEventListener('focus', refresh)
+    window.addEventListener('huanyu:search-sites-changed', refresh)
     document.addEventListener('visibilitychange', visible)
     return () => {
       clearTimeout(toastTimer.current)
       window.removeEventListener('focus', refresh)
+      window.removeEventListener('huanyu:search-sites-changed', refresh)
       document.removeEventListener('visibilitychange', visible)
     }
   }, [refresh])

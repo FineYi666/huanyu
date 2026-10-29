@@ -36,8 +36,8 @@ test('page playlists keep seasons separate, restart episode numbering and expose
   assert.ok(roads.every(road=>road.pageNodeId==='public'))
 })
 test('enabled custom page and JSON sources participate in matching; disabled sources are never requested',async()=>{
-  let sites=normalizeSearchSites([{name:'页面源',type:'page',url:'https://ddys.app/'}],true),reads=0
-  const service=createWebSources({providers:[],getSites:()=>sites,searchPage:async()=>({links:[{title:'测试剧 (更新至 第2季02)',url:'https://ddys.app/test/'}]}),readPage:async()=>{reads++;return {...snapshot(),url:'https://ddys.app/test/'}},probe:async source=>({...source,format:'file',height:1080,width:1920})})
+  let sites=normalizeSearchSites([{name:'页面源',type:'page',url:'https://cinema.example/'}],true),reads=0
+  const service=createWebSources({providers:[],getSites:()=>sites,searchPage:async()=>({links:[{title:'测试剧 (更新至 第2季02)',url:'https://cinema.example/test/'}]}),readPage:async()=>{reads++;return snapshot()},probe:async source=>({...source,format:'file',height:1080,width:1920})})
   const value=await service.search('测试剧 第二季',{category:'anime',cover:'https://poster.example/trusted.jpg'})
   assert.equal(value.results.length,1);assert.equal(value.results[0].episodes[0].season,2)
   assert.equal(value.results[0].cover,'https://poster.example/trusted.jpg');assert.equal(service.snapshot(value.results[0].id).cover,value.results[0].cover)
@@ -47,6 +47,11 @@ test('enabled custom page and JSON sources participate in matching; disabled sou
   const vod=normalizeSearchSites([{name:'采集源',type:'vod',url:'https://vod.example/api?key=public'}],true)
   const json=createWebSources({providers:[],getSites:()=>vod,fetcher:async url=>{calls++;assert.equal(new URL(url).searchParams.get('key'),'public');return Response.json({list:[{vod_id:1,vod_name:'测试电影',type_name:'剧情片',vod_play_from:'高清',vod_play_url:'正片$https://cdn.example/movie.mp4'}]})},probe:async source=>({...source,format:'file',height:1080})})
   assert.equal((await json.search('测试电影',{category:'movie'})).results.length,1);assert.ok(calls>0)
+  const anime=createWebSources({providers:[],getSites:()=>vod,fetcher:async()=>Response.json({list:[{vod_id:2,vod_name:'测试动漫 第二季',type_name:'日本动漫',vod_play_from:'高清',vod_play_url:'第1集$https://cdn.example/anime.mp4'}]}),probe:async source=>({...source,format:'file',height:1080})})
+  assert.equal((await anime.search('测试动漫 第二季',{category:'anime'})).results.length,1)
+  const unsupported=createWebSources({providers:[],getSites:()=>sites.map(site=>({...site,enabled:true})),searchPage:async()=>({links:[{title:'测试动漫 第二季',url:'https://cinema.example/test/'}]}),readPage:async()=>({url:'https://cinema.example/test/',title:'测试动漫 第二季',scripts:[],links:[]})})
+  const missing=await unsupported.search('测试动漫 第二季',{category:'anime'})
+  assert.equal(missing.results.length,0);assert.match(missing.sources[0].message,/尚未兼容该站播放器/)
 })
 test('added Quark sites actually contribute extracted matches to aggregate search',async()=>{
   const sites=normalizeSearchSites([{name:'分享站',type:'quark',url:'https://shares.example/search?q={query}'}],true)

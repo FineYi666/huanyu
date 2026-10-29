@@ -19,23 +19,23 @@ function Manager({ onClose }: { onClose: () => void }) {
       .catch(reason => { if (active) setError(reason.message) })
     return () => { active = false }
   }, [])
-  function add() {
+  async function add() {
     setError(''); setNotice('')
     if (!name.trim() || !url.trim()) { setError('请填写网站名称和搜索地址'); return }
     if (['quark', 'web'].includes(type) && !url.includes('{query}')) { setError('请把搜索网址中的关键词替换为 {query}'); return }
     if ((sites?.length || 0) >= 12) { setError('最多添加 12 个网站'); return }
     if (sites?.some(site => site.url === url.trim() && site.type === type)) { setError('这个网站已经添加'); return }
-    setSites(current => [...(current || []), { id: `draft-${Date.now()}`, name: name.trim(), url: url.trim(), type, enabled: true }])
-    setName(''); setUrl('')
+    if(await save([...(sites||[]),{id:`draft-${Date.now()}`,name:name.trim(),url:url.trim(),type,enabled:true}])){setName('');setUrl('')}
   }
-  async function save() {
-    if (!sites) return
+  async function save(next:Site[]) {
     setBusy(true); setError(''); setNotice('')
     try {
-      const value = await api<AppState>('/search-sites', { sites })
+      const value = await api<AppState>('/search-sites', { sites:next })
       setSites(value.settings.searchSites || [])
-      setNotice('已保存，下次搜索将使用已启用的网站。')
-    } catch (reason) { setError((reason as Error).message) }
+      setNotice('已自动保存并生效，当前资源搜索会自动更新。')
+      window.dispatchEvent(new Event('huanyu:search-sites-changed'))
+      return true
+    } catch (reason) { setError((reason as Error).message);return false }
     finally { setBusy(false) }
   }
   async function verify(site: Site) {
@@ -46,13 +46,13 @@ function Manager({ onClose }: { onClose: () => void }) {
     } catch (reason) { setError((reason as Error).message) }
     finally { setVerifying('') }
   }
-  return <Dialog title="管理搜索网站" onClose={onClose} className="search-sites-dialog">
-    <p className="dialog-intro">动漫在线搜索使用 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE。需要验证时可自动弹窗，也可在这里手动打开；其他自定义影视站用于电影、电视剧搜索。</p>
+  return <Dialog title="管理搜索网站" onClose={()=>{if(!busy)onClose()}} className="search-sites-dialog">
+    <p className="dialog-intro">动漫默认使用 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE；你主动添加并启用的影视网站也会参与动漫、电影和电视剧搜索。添加、启停与移除会立即保存，无需重启。</p>
     {!!builtins.length&&<div className="builtin-anime-sites" aria-label="内置动漫来源验证">{builtins.map(site=><div key={site.id}><span>{site.name}</span><button type="button" disabled={!!verifying} onClick={()=>void verify(site)}><ShieldCheck size={14}/>验证 / 登录</button></div>)}</div>}
     <div className="search-sites-list" aria-label="自定义搜索网站">
       {sites?.length ? sites.map(site => <article key={site.id}>
         <label><input type="checkbox" aria-label={`启用${site.name}`} checked={site.enabled} disabled={busy}
-          onChange={event => { setNotice(''); setSites(items => items!.map(item => item.id === site.id ? { ...item, enabled: event.target.checked } : item)) }} />
+          onChange={event => { void save(sites!.map(item => item.id === site.id ? { ...item, enabled: event.target.checked } : item)) }} />
           <span><strong>{site.name}</strong><small>{labels[site.type]}</small></span></label>
         <p>{site.url}</p>
         <div className="site-row-actions">
@@ -60,12 +60,12 @@ function Manager({ onClose }: { onClose: () => void }) {
             title={site.id.startsWith('draft-') ? '请先保存网站设置' : '打开独立的网站验证窗口'} onClick={() => void verify(site)}>
             {verifying === site.id ? <LoaderCircle size={15} className="spin" /> : <ShieldCheck size={15} />}验证 / 登录</button>}
           <button aria-label={`移除${site.name}`} type="button" disabled={busy}
-            onClick={() => { setNotice(''); setSites(items => items!.filter(item => item.id !== site.id)) }}><Trash2 size={16} /></button>
+            onClick={() => { void save(sites!.filter(item => item.id !== site.id)) }}><Trash2 size={16} /></button>
         </div>
       </article>) : sites ? <div className="sites-empty"><Globe2 size={27} /><p>还没有添加网站，内置搜索来源仍然可用。</p></div>
         : <p><LoaderCircle className="spin" size={18} /> 正在读取网站设置…</p>}
     </div>
-    <form className="search-site-form" onSubmit={event => { event.preventDefault(); add() }}>
+    <form className="search-site-form" onSubmit={event => { event.preventDefault(); void add() }}>
       <h3><Plus size={16} /> 添加网站</h3>
       <div className="site-fields">
         <label>网站名称<input value={name} onChange={event => setName(event.target.value)} maxLength={40} placeholder="给这个来源起个名字" disabled={busy || !sites} /></label>
@@ -84,12 +84,12 @@ function Manager({ onClose }: { onClose: () => void }) {
         : type === 'vod' ? '支持兼容苹果 CMS / MacCMS 的 JSON 接口。继续核对片名、集数、画质和播放入口。'
           : type === 'quark' ? '用 {query} 代表搜索关键词。自动读取网页和作品详情中的公开夸克分享。'
             : '用 {query} 代表搜索关键词。显示网站搜索入口，点击后前往该站查看；此方式不自动导入片源。'}</p>
-      <button className="button outline" type="submit" disabled={busy || !sites}><Plus size={15} />加入列表</button>
+      <button className="button outline" type="submit" disabled={busy || !sites}>{busy?<LoaderCircle className="spin" size={15}/>:<Plus size={15} />}添加并启用</button>
     </form>
     {error && <p className="form-error" role="alert">{error}</p>}
     {notice && <p className="sites-saved" role="status">{notice}</p>}
     <div className="dialog-footer"><span>{sites?.length || 0} / 12 个自定义网站</span>
-      <button className="button primary" disabled={busy || !sites} onClick={() => void save()}>{busy ? <LoaderCircle className="spin" size={16} /> : <Globe2 size={16} />}保存网站设置</button></div>
+      <button className="button primary" disabled={busy || !sites} onClick={onClose}>{busy ? <LoaderCircle className="spin" size={16} /> : <Globe2 size={16} />}完成</button></div>
   </Dialog>
 }
 export default function SearchSitesButton() {

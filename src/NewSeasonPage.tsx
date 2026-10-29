@@ -17,6 +17,7 @@ import type { WebSourceResult } from './OnlinePlayer'
 import OnlineSources from './OnlineSources'
 import QuarkResults from './QuarkResults'
 import SiteVerificationNotice, { type VerificationSource } from './SiteVerificationNotice'
+import {searchOnlineSources} from './web-source-search'
 import useQuarkSearch, { type QuarkResource } from './useQuarkSearch'
 import type { MediaCategory } from '../media-category.mjs'
 import Dialog from './ui'
@@ -486,33 +487,40 @@ export function ResourceSearch({
   const [webError, setWebError] = useState('')
   const [verificationSources,setVerificationSources]=useState<(VerificationSource & {name:string;status:string;count:number;message?:string})[]>([])
   const webRevision=useRef(0)
-  async function loadWebSources(keyword: string) {
+  const webAbort=useRef<AbortController|null>(null)
+  async function loadWebSources(keyword: string,refresh=false) {
     const revision=++webRevision.current
+    webAbort.current?.abort()
+    const controller=new AbortController();webAbort.current=controller
     setWebBusy(true)
+    setWebSources(null)
     setWebError('')
     setVerificationSources([])
     try {
-      const value = await api<{ results: WebSourceResult[]; sources?:typeof verificationSources }>(
-        '/web-sources/search',
-        { keyword, subjectId:subject.id, category:subject.category||'anime' },
-      )
-      if(revision!==webRevision.current)return
-      setWebSources(value.results || [])
-      setVerificationSources(value.sources || [])
+      await searchOnlineSources({keyword,subjectId:subject.id,category:subject.category||'anime',refresh},controller.signal,value=>{
+        if(revision!==webRevision.current)return
+        setWebSources(value.results||[]);setVerificationSources(value.sources||[]);setWebBusy(Boolean(value.pending))
+        if(value.partial)setWebError('部分网站响应较慢，已保留当前结果，可稍后重搜。')
+      })
     } catch (e) {
-      if(revision===webRevision.current){setWebError((e as Error).message);setWebSources([])}
+      if(revision===webRevision.current&&!controller.signal.aborted)setWebError((e as Error).message)
     } finally {
       if(revision===webRevision.current)setWebBusy(false)
     }
   }
-  function search(value: string) {
+  function search(value: string,refresh=false) {
     setImportError('')
-    void loadWebSources(value)
+    void loadWebSources(value,refresh)
     void quark.search(value, subject.id)
   }
+  useEffect(()=>{
+    const changed=()=>search(query,true)
+    window.addEventListener('huanyu:search-sites-changed',changed)
+    return()=>window.removeEventListener('huanyu:search-sites-changed',changed)
+  },[query,subject.id])
   useEffect(() => {
     search(subject.title)
-    return () => { webRevision.current++ }
+    return () => { webRevision.current++;webAbort.current?.abort() }
   }, [subject.id, subject.title])
   async function importResource(resource: QuarkResource) {
     setImporting(resource.id)
@@ -570,7 +578,7 @@ export function ResourceSearch({
         className="resource-query"
         onSubmit={(e) => {
           e.preventDefault()
-          void search(query)
+          void search(query,true)
         }}
       >
         <Search size={17} />
@@ -593,12 +601,12 @@ export function ResourceSearch({
       </form>
       <SearchSitesButton />
       <p className="resource-note">
-        {subject.category==='movie'||subject.category==='tv'?'同时搜索内置来源与已启用的自定义网站，':'在线动漫仅搜索 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE，'}
+        {subject.category==='movie'||subject.category==='tv'?'同时搜索内置来源与已启用的自定义网站，':'动漫默认搜索 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE，并补充你已启用的自定义来源，'}
         自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
-      {!webBusy&&!!verificationSources.length&&<div className="tv-source-status" aria-label="在线来源搜索状态">{verificationSources.map(source=><span key={source.name} title={source.message} className={source.status==='error'?'unavailable':''}>{source.name}<small>{source.needsVerification?'等待验证':source.count?`${source.count} 条线路`:source.status==='error'?'暂不可用':'无可用线路'}</small></span>)}</div>}
+      {!!verificationSources.length&&<div className="tv-source-status" aria-label="在线来源搜索状态">{verificationSources.map(source=><span key={source.name} title={source.message} className={source.status==='error'?'unavailable':''}>{source.name}<small>{source.needsVerification?'等待验证':source.count?`${source.count} 条线路`:source.status==='loading'?'查询中…':source.name.startsWith('自定义')?source.message?.slice(0,60)||'无可用线路':source.status==='error'?'暂不可用':'无可用线路'}</small></span>)}</div>}
       <OnlineSources results={webSources} busy={webBusy} error={webError} library={media} onLibraryChange={onFavoriteChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
-      <SiteVerificationNotice sources={verificationSources} onVerified={()=>void loadWebSources(query)} />
+      <SiteVerificationNotice sources={verificationSources} onVerified={()=>void loadWebSources(query,true)} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />
       <div className="resource-fallback-actions">
         <button

@@ -135,7 +135,7 @@ export function createWebSources({
   function searchProviders(category){
     const seen=new Set()
     return providerList().filter(source=>{
-      if(source.disabled || (source.anime && category && category!=='anime') || (category==='anime'&&!isAnimeSource(source)))return false
+      if(source.disabled || (source.anime && category && category!=='anime') || (category==='anime'&&!isAnimeSource(source)&&!source.custom))return false
       const key=source.page?new URL(source.site.url).hostname:source.id
       if(seen.has(key))return false
       seen.add(key);return true
@@ -145,10 +145,38 @@ export function createWebSources({
   const records = new Map(),
     pending = new Map(),
     failed = new Map()
-  async function pageResults(source,query,aliases,category,minHeight) {
+  const jobs=new Map(),pages=new Map()
+  function searchKey(keyword,options={}){
+    return JSON.stringify([String(keyword||'').trim().slice(0,80),(options.aliases||[]).filter(x=>typeof x==='string'&&x.trim()).slice(0,2),options.category,[0,720,1080,1440,2160].includes(options.minHeight)?options.minHeight:1080,options.cover,getSites()])
+  }
+  function searchValue(statuses,options,pending=false){
+    const results=[...new Map(statuses.flatMap(source=>source.results||[]).map(item=>{
+      if(options.cover)item.cover=options.cover
+      return[item.id,publicItem(item)]
+    })).values()].filter(item=>item.episodes.length).sort((a,b)=>sourcePriority(a,options.category)-sourcePriority(b,options.category)||(b.qualityHeight||resolutionHeight(b.width,b.height)||0)-(a.qualityHeight||resolutionHeight(a.width,a.height)||0))
+    return{results,sources:statuses.map(({results,...source})=>source).sort((a,b)=>sourcePriority(a,options.category)-sourcePriority(b,options.category)),searchedAt:new Date(now()).toISOString(),pending}
+  }
+  function publish(key,source,status,options){
+    const job=jobs.get(key)
+    if(!job?.value.pending)return
+    job.statuses.set(source.id,status)
+    job.value=searchValue([...job.statuses.values()],options,true)
+  }
+  async function catalogPage(source,url){
+    const key=source.site.id+'/'+url,prior=pages.get(key)
+    if(prior&&prior.expires>now())return structuredClone(prior.page)
+    const page=await readPage(source.site,url)
+    pages.set(key,{page:structuredClone(page),expires:now()+90000})
+    while(pages.size>80)pages.delete(pages.keys().next().value)
+    return page
+  }
+  async function pageResults(source,query,aliases,category,minHeight,onProgress) {
     if(!readPage||!searchPage)throw new Error('网页影视源需要桌面版')
     const found=[],seen=new Set()
-    for(const term of workSearchTerms(query,aliases).slice(0,2)){
+    const deadline=Date.now()+45000
+    let candidatePages=0,supportedPages=0
+    terms:for(const term of workSearchTerms(query,aliases).slice(0,2)){
+      if(Date.now()>deadline)break
       let search
       if(source.suggest&&readSiteApi){
         const url=new URL(source.suggest,source.api);url.searchParams.set('mid','1');url.searchParams.set('wd',term)
@@ -164,10 +192,14 @@ export function createWebSources({
         }catch{return []}
       })).values()].slice(0,3)
       for(const candidate of candidates){
+        if(Date.now()>deadline)break terms
         if(seen.has(candidate.url))continue;seen.add(candidate.url)
-        const page=await readPage(source.site,candidate.url)
+        const page=await catalogPage(source,candidate.url)
         page.workTitle=candidate.title
-        for(const road of parsePageSources(page,category).slice(0,source.id==='age'?3:8)){
+        const roads=parsePageSources(page,category)
+        candidatePages++;if(roads.length)supportedPages++
+        for(const road of roads.slice(0,source.id==='age'?3:8)){
+          if(Date.now()>deadline||found.length>=2)break terms
           if(source.id==='age'){
             const workId=new URL(road.pageUrl).pathname.split('/').pop()
             road.cover=(search.links||[]).find(link=>link.image && new RegExp(`/(?:detail|play)/${workId}(?:/|$)`).test(new URL(link.url,source.api).pathname))?.image || ''
@@ -177,13 +209,13 @@ export function createWebSources({
           const episode=road.episodes[0]
           try{const checked=await probeEpisode(source,road,episode);const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
             const item={...road,id:`web-${source.id}-${idFor(`${road.pageUrl || page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:road.pageUrl || page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:checked.width,height:checked.height,quality:qualityLabel(height),checkedAt:new Date(now()).toISOString(),checkedEpisode:episode.id}
-            records.set(item.id,{item,expires:now()+20*60000});found.push(item)
+            records.set(item.id,{item,expires:now()+20*60000});found.push(item);onProgress?.(found)
           }catch(error){if(error.needsVerification)throw error}
         }
       }
       if(found.length)break
     }
-    return found
+    return {results:found,message:found.length?'网页片源已校验':candidatePages&&!supportedPages?'已找到作品页面，但尚未兼容该站播放器':'未发现匹配且可播放的网页片源'}
   }
   async function probeEpisode(provider,item,episode) {
     if(episode.pageUrl && provider?.page && !episode.url){
@@ -222,7 +254,7 @@ export function createWebSources({
         .map(({ url, ...episode }) => episode),
     }
   }
-  async function search(keyword, options = {}) {
+  async function completeSearch(keyword, options = {}) {
     const query = String(keyword || '')
       .trim()
       .slice(0, 80)
@@ -231,11 +263,12 @@ export function createWebSources({
         .filter((x) => typeof x === 'string' && x.trim())
         .slice(0, 2),
       minHeight = [0, 720, 1080, 1440, 2160].includes(options.minHeight) ? options.minHeight : 1080,
-      key = JSON.stringify([query, aliases, options.category, minHeight,options.cover,getSites()])
+      key = searchKey(query,options)
     if (pending.has(key)) return pending.get(key)
+    const activeSources=searchProviders(options.category)
     const operation = (async () => {
       const statuses = await Promise.all(
-        searchProviders(options.category)
+        activeSources
           .map(async (source) => {
             const found = [],
               deadline = AbortSignal.timeout(20000)
@@ -248,7 +281,7 @@ export function createWebSources({
                   : deadline,
               })
             try {
-              if(source.page){found.push(...await pageResults(source,query,aliases,options.category||'anime',minHeight));return{name:source.name,status:'ok',count:found.length,results:found,message:found.length?'网页片源已校验':'未发现匹配且可播放的网页片源'}}
+              if(source.page){const page=await pageResults(source,query,aliases,options.category||'anime',minHeight,items=>publish(key,source,{name:source.name,status:'loading',count:items.length,results:items,message:'已校验部分线路，其余仍在查询'},options));found.push(...page.results);return{name:source.name,status:'ok',count:found.length,results:found,message:page.message}}
               for (const term of workSearchTerms(query, aliases)) {
                 const data = await api(
                   source.anime
@@ -342,6 +375,7 @@ export function createWebSources({
                           expires: now() + 30 * 60000,
                         })
                         found.push(item)
+                        publish(key,source,{name:source.name,status:'loading',count:found.length,results:found},options)
                       }
                     }
                   } catch {}
@@ -368,33 +402,37 @@ export function createWebSources({
                 results: found,
               }
             }
-          }),
+          }).map((operation,index)=>operation.then(status=>{publish(key,activeSources[index],status,options);return status})),
       )
       for (const [id, entry] of records)
         if (entry.expires < now()) records.delete(id)
       while (records.size > 300) records.delete(records.keys().next().value)
       for (const [key, expires] of failed)
         if (expires < now()) failed.delete(key)
-      const results = [
-        ...new Map(
-          statuses
-            .flatMap((source) => source.results)
-            .map((item) => {
-              // A trusted catalog poster also works when the source site's images
-              // require its browser session. Keep saved records consistent with UI.
-              if (options.cover) item.cover = options.cover
-              return [item.id, publicItem(item)]
-            }),
-        ).values(),
-      ].filter((item) => item.episodes.length).sort((a,b) => sourcePriority(a,options.category) - sourcePriority(b,options.category) || (b.qualityHeight || 0) - (a.qualityHeight || 0))
-      return {
-        results,
-        sources: statuses.map(({ results, ...source }) => source).sort((a,b)=>sourcePriority(a,options.category)-sourcePriority(b,options.category)),
-        searchedAt: new Date(now()).toISOString(),
-      }
+      return searchValue(statuses,options)
     })().finally(() => pending.delete(key))
     pending.set(key, operation)
     return operation
+  }
+  function search(keyword,options={}){
+    if(!options.progressive)return completeSearch(keyword,options)
+    const key=searchKey(keyword,options)
+    let job=jobs.get(key)
+    if(job?.value.pending&&options.refresh&&job.value.sources.some(source=>source.needsVerification))job.retryAfterVerification=true
+    if(job&&!job.value.pending&&(job.expires<now()||options.refresh))jobs.delete(key)
+    job=jobs.get(key)
+    if(job)return Promise.resolve(structuredClone(job.value))
+    for(const [id,value]of jobs)if(!value.value.pending&&value.expires<now())jobs.delete(id)
+    while(jobs.size>=60){const oldest=[...jobs].find(([,value])=>!value.value.pending);if(!oldest)break;jobs.delete(oldest[0])}
+    const statuses=new Map(searchProviders(options.category).map(source=>[source.id,{name:source.name,status:'loading',count:0,results:[]}]))
+    job={statuses,value:searchValue([...statuses.values()],options,true),expires:Infinity}
+    jobs.set(key,job)
+    if(options.refresh)pages.clear()
+    void completeSearch(keyword,options).then(value=>{
+      job.value={...value,pending:false};job.expires=now()+120000
+      if(job.retryAfterVerification&&jobs.get(key)===job){jobs.delete(key);void search(keyword,{...options,refresh:false})}
+    }).catch(error=>{job.value={...job.value,pending:false,error:String(error.message)};job.expires=now()+10000})
+    return Promise.resolve(structuredClone(job.value))
   }
   async function resolve(resultId, episodeId) {
     const record = records.get(resultId),

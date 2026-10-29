@@ -974,7 +974,7 @@ const server = http.createServer(async (req, res) => {
         return json(res, { error: '请输入 2 个字以上的名称' }, 400)
       const subject = await Promise.resolve(importSubject(input.subjectId)).catch(() => null)
       const aliases = subject && [subject.title, subject.subtitle].includes(keyword) ? [subject.title, subject.subtitle] : []
-      const value = await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime', minHeight: input.minHeight, cover: aliases.length ? subject.image : undefined })
+      const value = await webSources.search(keyword, { aliases, category: subject?.category || input.category || 'anime', minHeight: input.minHeight, cover: aliases.length ? subject.image : undefined,progressive:input.progressive===true,refresh:input.refresh===true })
       return json(res, { ...value, results: value.results.map(item => ({ ...item, cover: posters.localize(item.cover) })) })
     }
     if (route === '/api/web-sources/report' && req.method === 'POST') {
