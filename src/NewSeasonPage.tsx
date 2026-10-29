@@ -484,7 +484,7 @@ export function ResourceSearch({
   const [webSources, setWebSources] = useState<WebSourceResult[] | null>(null)
   const [webBusy, setWebBusy] = useState(false)
   const [webError, setWebError] = useState('')
-  const [verificationSources,setVerificationSources]=useState<VerificationSource[]>([])
+  const [verificationSources,setVerificationSources]=useState<(VerificationSource & {name:string;status:string;count:number;message?:string})[]>([])
   const webRevision=useRef(0)
   async function loadWebSources(keyword: string) {
     const revision=++webRevision.current
@@ -492,7 +492,7 @@ export function ResourceSearch({
     setWebError('')
     setVerificationSources([])
     try {
-      const value = await api<{ results: WebSourceResult[]; sources?:VerificationSource[] }>(
+      const value = await api<{ results: WebSourceResult[]; sources?:typeof verificationSources }>(
         '/web-sources/search',
         { keyword, subjectId:subject.id, category:subject.category||'anime' },
       )
@@ -593,9 +593,10 @@ export function ResourceSearch({
       </form>
       <SearchSitesButton />
       <p className="resource-note">
-        同时搜索内置来源与已启用的自定义网站，
+        {subject.category==='movie'||subject.category==='tv'?'同时搜索内置来源与已启用的自定义网站，':'在线动漫仅搜索 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE，'}
         自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
       </p>
+      {!webBusy&&!!verificationSources.length&&<div className="tv-source-status" aria-label="在线来源搜索状态">{verificationSources.map(source=><span key={source.name} title={source.message} className={source.status==='error'?'unavailable':''}>{source.name}<small>{source.needsVerification?'等待验证':source.count?`${source.count} 条线路`:source.status==='error'?'暂不可用':'无可用线路'}</small></span>)}</div>}
       <OnlineSources results={webSources} busy={webBusy} error={webError} library={media} onLibraryChange={onFavoriteChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
       <SiteVerificationNotice sources={verificationSources} onVerified={()=>void loadWebSources(query)} />
       <QuarkResults data={quark} importing={importing} error={importError} onImport={resource => void importResource(resource)} />

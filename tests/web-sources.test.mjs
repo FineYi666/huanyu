@@ -261,7 +261,7 @@ test('web search requires title and playable content, separates roads and revali
   }
   const service = createWebSources({
     providers: [
-      { id: 'test', name: '测试来源', api: 'https://source.example/api' },
+      { id: 'giri', name: '测试来源', api: 'https://source.example/api' },
     ],
     fetcher: async () =>
       Response.json({

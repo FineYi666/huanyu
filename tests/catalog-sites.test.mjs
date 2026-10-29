@@ -36,8 +36,8 @@ test('page playlists keep seasons separate, restart episode numbering and expose
   assert.ok(roads.every(road=>road.pageNodeId==='public'))
 })
 test('enabled custom page and JSON sources participate in matching; disabled sources are never requested',async()=>{
-  let sites=normalizeSearchSites([{name:'页面源',type:'page',url:'https://cinema.example/'}],true),reads=0
-  const service=createWebSources({providers:[],getSites:()=>sites,searchPage:async()=>({links:[{title:'测试剧 (更新至 第2季02)',url:'https://cinema.example/test/'}]}),readPage:async()=>{reads++;return snapshot()},probe:async source=>({...source,format:'file',height:1080,width:1920})})
+  let sites=normalizeSearchSites([{name:'页面源',type:'page',url:'https://ddys.app/'}],true),reads=0
+  const service=createWebSources({providers:[],getSites:()=>sites,searchPage:async()=>({links:[{title:'测试剧 (更新至 第2季02)',url:'https://ddys.app/test/'}]}),readPage:async()=>{reads++;return {...snapshot(),url:'https://ddys.app/test/'}},probe:async source=>({...source,format:'file',height:1080,width:1920})})
   const value=await service.search('测试剧 第二季',{category:'anime',cover:'https://poster.example/trusted.jpg'})
   assert.equal(value.results.length,1);assert.equal(value.results[0].episodes[0].season,2)
   assert.equal(value.results[0].cover,'https://poster.example/trusted.jpg');assert.equal(service.snapshot(value.results[0].id).cover,value.results[0].cover)

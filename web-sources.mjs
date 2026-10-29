@@ -1,17 +1,18 @@
 import { createHash } from 'node:crypto'
-import { matchesWork, workSearchTerms, canonicalWorkKey } from './media-match.mjs'
-import { requestSite, normalizeSearchSites } from './resource-sites.mjs'
+import { matchesWork, workSearchTerms, canonicalWorkKey, animeTitleRelevant } from './media-match.mjs'
+import { requestSite } from './resource-sites.mjs'
 import { parsePageSources, pageTitle } from './page-sources.mjs'
 import { resourceRelevance } from './resource-search.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 import { probeStream, publicVideoUrl } from './stream-probe.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
+import {AGE_SOURCE,ANIME_PAGE_SOURCES,isAnimeSource} from './anime-sources.mjs'
+import {pageMediaUrls} from './page-sources.mjs'
 // Search -> selected work -> playback roads follows Kazumi's documented rule flow.
 // giriGiriLove endpoints/field mappings: Predidit/KazumiRules (MIT), see licenses.
-export const AGE_SOURCE = { id: 'age', name: 'AGE动漫', api: 'https://www.agedm.io/', anime: true, page: true,
-  site: normalizeSearchSites([{name:'AGE动漫',type:'page',url:'https://www.agedm.io/search?query={query}'}],true)[0] }
+export {AGE_SOURCE}
 const SOURCES = [
-  AGE_SOURCE,
+  ...ANIME_PAGE_SOURCES,
   { id: 'subo', name: '速播资源', api: 'https://subocj.com/api.php/provide/vod' },
   { id: 'hn', name: '红牛资源', api: 'https://www.hongniuzy2.com/api.php/provide/vod' },
   {
@@ -47,6 +48,9 @@ export function sourcePriority(source, category) {
   const name=source.sourceName || source.name || ''
   if ((source.sourceId || source.id) === 'giri' || /giriGiriLove/i.test(name)) return 1
   if ((source.sourceId || source.id) === 'age' || /AGE动漫/i.test(name)) return 2
+  if ((source.sourceId || source.id) === 'mgn' || /MG动漫/.test(name)) return 3
+  if ((source.sourceId || source.id) === 'mute' || /Mute动漫/.test(name)) return 4
+  if ((source.sourceId || source.id) === 'lmm' || /路漫漫/.test(name)) return 5
   if ((source.sourceId || source.id) === 'subo' || /速播/.test(name)) return 20
   if ((source.sourceId || source.id) === 'hn' || /红牛/.test(name)) return 21
   return 10
@@ -122,8 +126,21 @@ export function createWebSources({
   getSites=()=>[],
   readPage,
   searchPage,
+  readSiteApi,
 } = {}) {
-  const providerList=()=>[...providers,...getSites().filter(site=>site.enabled && ['vod','page'].includes(site.type)).map(site=>({id:`custom-${site.id}`,name:`自定义 · ${site.name}`,api:site.url,custom:true,page:site.type==='page',site}))]
+  const providerList=()=>[...providers.map(source=>{
+    const configured=source.site&&getSites().find(site=>new URL(site.url).hostname===new URL(source.site.url).hostname&&site.type==='page')
+    return configured?{...source,site:configured,disabled:!configured.enabled}:source
+  }),...getSites().filter(site=>site.enabled && ['vod','page'].includes(site.type)).map(site=>({id:`custom-${site.id}`,name:`自定义 · ${site.name}`,api:site.url,custom:true,page:site.type==='page',site}))]
+  function searchProviders(category){
+    const seen=new Set()
+    return providerList().filter(source=>{
+      if(source.disabled || (source.anime && category && category!=='anime') || (category==='anime'&&!isAnimeSource(source)))return false
+      const key=source.page?new URL(source.site.url).hostname:source.id
+      if(seen.has(key))return false
+      seen.add(key);return true
+    })
+  }
   const sourceUrl=(source,params)=>{const url=new URL(source.api);for(const [key,value]of Object.entries(params))url.searchParams.set(key,String(value));return url.href}
   const records = new Map(),
     pending = new Map(),
@@ -132,22 +149,30 @@ export function createWebSources({
     if(!readPage||!searchPage)throw new Error('网页影视源需要桌面版')
     const found=[],seen=new Set()
     for(const term of workSearchTerms(query,aliases).slice(0,2)){
-      const search=await searchPage(source.site,term)
+      let search
+      if(source.suggest&&readSiteApi){
+        const url=new URL(source.suggest,source.api);url.searchParams.set('mid','1');url.searchParams.set('wd',term)
+        const value=(await readSiteApi(source.site,url.href)).data
+        if(!Array.isArray(value?.list))throw new Error('网站搜索接口格式已变更')
+        search={links:value.list.map(item=>({title:String(item.name||''),url:new URL(source.detail.replace('{id}',encodeURIComponent(item.id)),source.api).href,image:item.pic||''}))}
+      }else search=await searchPage(source.site,term)
       const candidates=[...new Map((search.links||[]).flatMap(link=>{
         try {
           const url=new URL(link.url)
           if(source.id==='age'&&url.hostname==='www.agedm.io')url.protocol='https:'
-          return url.origin===new URL(source.api).origin && resourceRelevance(pageTitle(link.title),term) ? [[url.href,{...link,url:url.href}]] : []
+          return url.origin===new URL(source.api).origin && (category==='anime'?animeTitleRelevant(pageTitle(link.title),term):resourceRelevance(pageTitle(link.title),term)) ? [[url.href,{...link,url:url.href}]] : []
         }catch{return []}
       })).values()].slice(0,3)
       for(const candidate of candidates){
         if(seen.has(candidate.url))continue;seen.add(candidate.url)
         const page=await readPage(source.site,candidate.url)
-        for(const road of parsePageSources(page,category).slice(0,source.id==='age'?2:8)){
+        page.workTitle=candidate.title
+        for(const road of parsePageSources(page,category).slice(0,source.id==='age'?3:8)){
           if(source.id==='age'){
             const workId=new URL(road.pageUrl).pathname.split('/').pop()
             road.cover=(search.links||[]).find(link=>link.image && new RegExp(`/(?:detail|play)/${workId}(?:/|$)`).test(new URL(link.url,source.api).pathname))?.image || ''
           }
+          else if(source.suggest && candidate.image)road.cover=candidate.image
           if(!matchesWork({title:road.title,type:road.category==='movie'?'电影':road.category==='tv'?'电视剧':'动漫'},query,{aliases,category}))continue
           const episode=road.episodes[0]
           try{const checked=await probeEpisode(source,road,episode);const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
@@ -161,12 +186,12 @@ export function createWebSources({
     return found
   }
   async function probeEpisode(provider,item,episode) {
-    if(episode.pageUrl && provider?.id==='age' && !episode.url){
+    if(episode.pageUrl && provider?.page && !episode.url){
       const page=await readPage(provider.site,episode.pageUrl)
-      for(const url of [...(page.videos||[]),...(page.media||[])].filter(url=>/\.(?:m3u8|mp4|webm)(?:$|\?)/i.test(url))){
+      for(const url of pageMediaUrls(page)){
         try{const headers=page.mediaHeaders?.[url] || {Referer:episode.pageUrl};const checked=await probe({url,headers,web:true},{fetcher});episode.url=url;item.headers=headers;return checked}catch{}
       }
-      throw new Error('AGE 本集播放地址暂不可用，请换线路')
+      throw new Error(`${provider.name} 本集播放地址暂不可用，请换线路`)
     }
     return probe({url:episode.url,headers:item.headers,web:true},{fetcher})
   }
@@ -210,8 +235,7 @@ export function createWebSources({
     if (pending.has(key)) return pending.get(key)
     const operation = (async () => {
       const statuses = await Promise.all(
-        providerList()
-          .filter((source) => !source.anime || !options.category || options.category === 'anime')
+        searchProviders(options.category)
           .map(async (source) => {
             const found = [],
               deadline = AbortSignal.timeout(20000)
@@ -338,7 +362,7 @@ export function createWebSources({
                 status: 'error',
                 count: found.length,
                 matchedCount,
-                message: source.custom?String(error.message).slice(0,140):'来源响应超时或暂不可用',
+                message: source.custom||source.page?String(error.message).slice(0,140):'来源响应超时或暂不可用',
                 needsVerification:Boolean(error.needsVerification),
                 siteId:error.siteId,
                 results: found,

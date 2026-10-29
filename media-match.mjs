@@ -6,12 +6,13 @@ export const titleKey = (value) =>
     .replace(/[^\p{L}\p{N}]/gu, '')
 function baseTitle(value) {
   return titleKey(
-    String(value || '')
+    String(value || '').normalize('NFKC')
       .replace(
         /第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|\d+(?:st|nd|rd|th)\s+season|s\d{1,2})\b/gi,
         '',
       )
       .replace(/\s*[（(](?:19|20)\d{2}[）)]\s*$/, '')
+      .replace(/([\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])[IVX]{1,5}(?=\s|[~～〜:：]|$)/gu,'$1')
       .replace(
         /(?:\s*[（(](?:国语|日语|英语|粤语|中字|中文字幕|普通话|配音|字幕)[^）)]*[）)]|(?:国语|日语|英语|粤语|普通话)(?:版)?)$/g,
         '',
@@ -23,8 +24,24 @@ export function canonicalWorkKey(title) {
 }
 export function workSearchTerms(query, aliases = []) {
   const base = String(query).replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi, '').trim()
-  return [...new Set([query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(Boolean))].slice(0, 4)
+  const short=String(query).split(/\s*[~～〜：:]\s*/)[0].trim()
+  const family=short.replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi,'').trim()
+  return [...new Set([short, family, query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(term=>term&&term.length>=2))].slice(0, 6)
 }
+const animeFamilies=[['无职转生','無職転生','無職轉生','mushokutensei'],['转生就是剑','转生成为魔剑','転生したら剣でした']]
+const animeKey=value=>{
+  let key=baseTitle(String(value||'').replace(/\s*[（(](?:更新至|更新到|全\d|已完结|完结)[\s\S]*[）)]\s*$/,'')).replace(/(?:第?\d+(?:クール|部分)|part\d+)$/i,'')
+  for(const names of animeFamilies)for(const name of names){const root=titleKey(name);if(key===root || (key.startsWith(root) && /^(到了异世界就拿出真本事|到了異世界就拿出真本事|異世界行ったら本気だす|joblessreincarnation)$/.test(key.slice(root.length))))return titleKey(names[0])}
+  return key
+}
+function equivalentAnime(a,b){
+  const x=animeKey(a),y=animeKey(b)
+  if(x===y)return true
+  // Allow an actual subtitle after an explicit separator, not arbitrary prefixes.
+  const short=value=>animeKey(String(value).split(/\s*[~～〜：:]\s*/)[0])
+  return short(a).length>=3 && short(a)===short(b)
+}
+export const animeTitleRelevant=(name,query)=>equivalentAnime(name,query)
 export function matchesWork(candidate, query, { aliases = [], category } = {}) {
   const name = String(candidate.title || candidate.vod_name || '')
   if (
@@ -52,5 +69,5 @@ export function matchesWork(candidate, query, { aliases = [], category } = {}) {
     comparable = comparable.replace(/\d{1,2}$/, '')
   }
   if ((requestedSeason || 1) !== (actualSeason || 1)) return false
-  return targets.some((term) => comparable === baseTitle(term))
+  return targets.some((term) => comparable === baseTitle(term) || (category==='anime'&&equivalentAnime(name,term)))
 }

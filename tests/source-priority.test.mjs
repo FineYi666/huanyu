@@ -4,7 +4,7 @@ import {createWebSources,AGE_SOURCE,sourcePriority} from '../web-sources.mjs'
 import {parsePageSources} from '../page-sources.mjs'
 import {createSiteRenderer} from '../site-renderer.mjs'
 
-const ageDetail={url:'https://www.agedm.io/detail/123',documentTitle:'测试动漫 第二季 - AGE动漫',image:'https://www.agedm.io/logo.png',text:'首播时间：2026-10-01',roadLabels:['VIP 西瓜','非凡'],links:[13,14].map(n=>({title:`第${n}集`,url:`https://www.agedm.io/play/123/2/${n}`}))}
+const ageDetail={url:'https://www.agedm.io/detail/123',documentTitle:'测试动漫 第二季 - AGE动漫',image:'https://www.agedm.io/logo.png',text:'首播时间：2026-10-01',roadLabels:['VIP会员专属','非凡'],links:[13,14].map(n=>({title:`第${n}集`,url:`https://www.agedm.io/play/123/2/${n}`}))}
 test('AGE keeps complete episode pages, separates seasons and resolves each selected episode lazily',async()=>{
   const reads=[]
   const service=createWebSources({providers:[AGE_SOURCE],searchPage:async()=>({links:[{title:'测试动漫 第二季',url:'http://www.agedm.io/detail/123',image:'https://poster.example/anime.jpg'},{title:'测试动漫 第二季',url:'https://www.agedm.io/play/123/2/13'}]}),readPage:async(_s,url)=>{reads.push(url);return {...ageDetail,url,media:url.includes('/play/')?[`https://cdn.example/${url.split('/').pop()}.m3u8`]:[]}},probe:async source=>({...source,format:'hls',width:1920,height:1080})})
@@ -20,12 +20,12 @@ test('AGE keeps complete episode pages, separates seasons and resolves each sele
   assert.equal((await service.resolveStored(saved,saved.episodes[1].id)).url,second.url)
   assert.equal(parsePageSources({...ageDetail,links:[{title:'第1集',url:'https://www.agedm.io/play/123/1/1'}]},'anime').length,0)
 })
-test('anime source preference precedes resolution; other categories retain resolution ordering',async()=>{
+test('anime searches exclude legacy movie aggregators while retaining the chosen anime source',async()=>{
   const providers=['hn','subo','bf','giri'].map(id=>({id,name:{hn:'红牛资源',subo:'速播资源',bf:'暴风资源',giri:'giriGiriLove'}[id],api:`https://${id}.example/api`}))
   const service=createWebSources({providers,fetcher:async url=>Response.json({list:[{vod_id:1,vod_name:'测试动漫',type_name:'日本动漫',vod_play_from:'高清',vod_play_url:`第1集$https://${new URL(url).hostname}/1.m3u8`}]}),probe:async source=>({...source,width:1920,height:source.url.includes('hn.example')?2160:1080})})
   const result=await service.search('测试动漫',{category:'anime'})
-  assert.deepEqual(result.results.map(item=>item.sourceId),['giri','bf','subo','hn'])
-  assert.deepEqual(result.sources.map(item=>item.name),['giriGiriLove','暴风资源','速播资源','红牛资源'])
+  assert.deepEqual(result.results.map(item=>item.sourceId),['giri'])
+  assert.deepEqual(result.sources.map(item=>item.name),['giriGiriLove'])
   const values=[{sourceId:'hn',qualityHeight:2160},{sourceId:'giri'},{sourceId:'age'},{sourceName:'自定义 · 低端影视'}]
   values.sort((a,b)=>sourcePriority(a,'anime')-sourcePriority(b,'anime'))
   assert.deepEqual(values.map(item=>sourcePriority(item,'anime')),[0,1,2,21])

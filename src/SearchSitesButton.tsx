@@ -9,12 +9,13 @@ type Site = { id: string; name: string; type: 'quark' | 'vod' | 'web' | 'page'; 
 const labels = { quark: '夸克资源网页', vod: '影视采集接口', web: '网页搜索入口', page: '影视网站 · 页面取源' }
 function Manager({ onClose }: { onClose: () => void }) {
   const [sites, setSites] = useState<Site[] | null>(null)
+  const [builtins,setBuiltins]=useState<Site[]>([])
   const [busy, setBusy] = useState(false), [error, setError] = useState(''), [notice, setNotice] = useState('')
   const [verifying, setVerifying] = useState('')
   const [name, setName] = useState(''), [url, setUrl] = useState(''), [type, setType] = useState<Site['type']>('page')
   useEffect(() => {
     let active = true
-    void api<{ sites: Site[] }>('/search-sites').then(value => { if (active) setSites(value.sites) })
+    void api<{ sites: Site[];builtins?:Site[] }>('/search-sites').then(value => { if (active){setSites(value.sites);setBuiltins(value.builtins||[])} })
       .catch(reason => { if (active) setError(reason.message) })
     return () => { active = false }
   }, [])
@@ -46,7 +47,8 @@ function Manager({ onClose }: { onClose: () => void }) {
     finally { setVerifying('') }
   }
   return <Dialog title="管理搜索网站" onClose={onClose} className="search-sites-dialog">
-    <p className="dialog-intro">添加你常用的网站，保存后会参与下一次影视资源搜索。</p>
+    <p className="dialog-intro">动漫在线搜索使用 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE。需要验证时可自动弹窗，也可在这里手动打开；其他自定义影视站用于电影、电视剧搜索。</p>
+    {!!builtins.length&&<div className="builtin-anime-sites" aria-label="内置动漫来源验证">{builtins.map(site=><div key={site.id}><span>{site.name}</span><button type="button" disabled={!!verifying} onClick={()=>void verify(site)}><ShieldCheck size={14}/>验证 / 登录</button></div>)}</div>}
     <div className="search-sites-list" aria-label="自定义搜索网站">
       {sites?.length ? sites.map(site => <article key={site.id}>
         <label><input type="checkbox" aria-label={`启用${site.name}`} checked={site.enabled} disabled={busy}

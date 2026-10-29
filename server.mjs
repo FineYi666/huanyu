@@ -24,6 +24,7 @@ import { createGameResourceSearch } from './game-resources.mjs'
 import { createMovieCatalog } from './movie-catalog.mjs'
 import { createRenderedSearch } from './rendered-search.mjs'
 import { createWebSources, onlineEpisodeId } from './web-sources.mjs'
+import {ANIME_PAGE_SOURCES} from './anime-sources.mjs'
 import { saveOnlineMedia, publicOnlineSources, syncOnlineEpisodes, fetchOnlineCover } from './online-library.mjs'
 import { qualityLabel, resolutionHeight } from './stream-quality.mjs'
 import { publicVideoUrl } from './stream-probe.mjs'
@@ -60,7 +61,7 @@ const resourceSearch = createResourceSearch({
   renderSearch: createRenderedSearch(ROOT),
   validateShare: item => publicShares.checkShare(item.url,item.code),
 })
-const webSources = createWebSources({getSites:()=>state?.settings.searchSites || [],readPage:(site,url,options)=>siteRenderer.read(site,url,options),searchPage:(site,query)=>siteRenderer.search(site,query)})
+const webSources = createWebSources({getSites:()=>state?.settings.searchSites || [],readPage:(site,url,options)=>siteRenderer.read(site,url,options),searchPage:(site,query)=>siteRenderer.search(site,query),readSiteApi:(site,url)=>siteRenderer.api(site,url)})
 await mkdir(DATA, { recursive: true })
 await mkdir(path.join(DATA, 'covers'), { recursive: true })
 const recommendations = await createSeasonalService({ root: ROOT, data: DATA })
@@ -533,7 +534,7 @@ const server = http.createServer(async (req, res) => {
       await save()
       return json(res,publicState())
     }
-    if(route==='/api/search-sites' && req.method==='GET')return json(res,{sites:state.settings.searchSites || []})
+    if(route==='/api/search-sites' && req.method==='GET')return json(res,{sites:state.settings.searchSites || [],builtins:ANIME_PAGE_SOURCES.map(source=>source.site)})
     if(route==='/api/search-sites/verification' && req.method==='GET')return json(res,{sites:siteRenderer.verificationStatus()})
     if(route==='/api/search-sites' && req.method==='POST') {
       const input=await body(req)
@@ -544,7 +545,7 @@ const server = http.createServer(async (req, res) => {
     const verifySite=/^\/api\/search-sites\/([a-f0-9]{16})\/verify$/.exec(route)
     if(verifySite&&req.method==='POST') {
       await body(req)
-      const site=state.settings.searchSites?.find(site=>site.id===verifySite[1]&&site.type==='page')
+      const site=state.settings.searchSites?.find(site=>site.id===verifySite[1]&&site.type==='page') || ANIME_PAGE_SOURCES.map(source=>source.site).find(site=>site.id===verifySite[1])
       if(!site)return json(res,{error:'请先保存影视网站设置'},404)
       await siteRenderer.verify(site)
       return json(res,{started:true})

@@ -17,7 +17,10 @@ export function seasonNumber(value) {
     text.match(/第\s*([\d一二两三四五六七八九十]+)\s*(?:[季期]|部(?![队隊]))/i)?.[1] ||
     text.match(/(?:\bseason\s*|\bS)(\d{1,2})(?:\b|E\d)/i)?.[1] ||
     text.match(/\b(\d{1,2})(?:st|nd|rd|th)\s+season\b/i)?.[1]
-  if (!token) return null
+  if (!token) {
+    const roman=text.match(/(?:^|[\s\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}])([IVX]{1,5})(?=\s|[~～〜:：]|$)/u)?.[1]
+    return {I:1,II:2,III:3,IV:4,V:5,VI:6,VII:7,VIII:8,IX:9,X:10}[roman] || null
+  }
   if (/^\d+$/.test(token)) return Number(token) || null
   if (token.includes('十')) {
     const [a, b] = token.split('十')

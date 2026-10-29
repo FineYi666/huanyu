@@ -21,3 +21,7 @@ html .app-shell .catalog-favorite:focus-visible{outline:2px solid var(--green);o
 .library-category-tabs button.active{background:rgb(var(--accent-rgb)/.16);border-color:rgb(var(--accent-rgb)/.5);color:var(--green)}
 .library-category-tabs button span{font-size:10px;font-variant-numeric:tabular-nums;opacity:.65}
 .library-category-tabs button:focus-visible{outline:2px solid var(--green);outline-offset:3px}
+.builtin-anime-sites{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:18px 0}
+.builtin-anime-sites>div{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;background:var(--subtle);font-size:12px}
+.builtin-anime-sites button{display:inline-flex;align-items:center;gap:5px;color:var(--green);font-size:10px;white-space:nowrap}
+@media(max-width:600px){.builtin-anime-sites{grid-template-columns:1fr}}

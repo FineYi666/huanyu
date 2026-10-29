@@ -179,6 +179,7 @@ export async function fetchSeasonal({
   fetcher = fetch,
   saveImage,
   season: seasonOverride,
+  knownItems = [],
 } = {}) {
   const season = seasonOverride || seasonAt(now)
   const request = bangumiRequest(fetcher)
@@ -207,6 +208,14 @@ export async function fetchSeasonal({
     ...(first.data || []),
     ...others.flatMap((page) => page.data || []),
   ]
+  // Search indexes can omit subjects that their detail endpoint still dates to
+  // this quarter. Recheck known omissions instead of dropping them on refresh.
+  const present=new Set(rawItems.map(item=>Number(item.id)))
+  const missing=knownItems.filter(item=>item.airDate>=season.start&&item.airDate<season.end&&!present.has(Number(String(item.id).replace('seasonal-','')))).slice(0,40)
+  for(let offset=0;offset<missing.length;offset+=5){
+    const checked=await Promise.allSettled(missing.slice(offset,offset+5).map(item=>request(`https://api.bgm.tv/v0/subjects/${String(item.id).replace('seasonal-','')}`)))
+    for(const item of checked)if(item.status==='fulfilled'&&item.value.type===2&&item.value.id&&!present.has(item.value.id)){rawItems.push(item.value);present.add(item.value.id)}
+  }
   const selected = selectSeasonal(rawItems, season)
   const items = selectSeasonalCatalog(rawItems, season).map((item) =>
     mapCatalogItem(item, season),
@@ -266,7 +275,7 @@ export async function fetchSeasonal({
       })
   }
   const slides = seasonalBanner({ items, slides: detailedSlides }, season)
-  return { season, updatedAt: now.toISOString(), slides, items }
+  return { season, indexVersion:1, updatedAt: now.toISOString(), slides, items }
 }
 
 export async function createSeasonalService({
@@ -303,13 +312,14 @@ export async function createSeasonalService({
       }
     } catch {}
   }
+  try{const seed=JSON.parse(await readFile(path.join(root,'seasonal.json'),'utf8'));remember((seed.items || []).filter(item=>!subjects.has(item.id)))}catch{}
   async function refresh() {
     lastAttempt = Date.now()
     try {
       const value = await fetchSeasonal({
         now: now(),
         fetcher,
-
+        knownItems:[...subjects.values()],
       })
       await writeFile(
         path.join(data, 'recommendations.tmp'),
@@ -500,8 +510,7 @@ export async function createSeasonalService({
     remember([subject])
     return subject
   }
-  return {
-    get(catalog = false) {
+  function get(catalog = false) {
       const season = seasonAt(now())
       const current = cached?.season?.id === season.id ? cached : undefined
       if (
@@ -509,6 +518,7 @@ export async function createSeasonalService({
         Date.now() - lastAttempt > 60000 &&
         (!current ||
           (catalog && !current.items) ||
+          (current.indexVersion!==1 && [...subjects.values()].some(item=>item.airDate>=season.start&&item.airDate<season.end&&!current.items?.some(present=>present.id===item.id))) ||
           now().getTime() - Date.parse(current.updatedAt) > 6 * 3600000)
       )
         pending = refresh()
@@ -519,7 +529,9 @@ export async function createSeasonalService({
         refreshing: Boolean(pending),
         error: lastError,
       }
-    },
+  }
+  return {
+    get,
     async update() {
       if (!pending && Date.now() - lastAttempt > 10000) pending = refresh()
       await pending

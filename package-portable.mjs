@@ -31,6 +31,7 @@ for (const file of [
   'movie-filters.mjs',
   'movie-seed.json',
   'web-sources.mjs',
+  'anime-sources.mjs',
   'online-library.mjs',
   'catalog-favorites.mjs',
   'resource-sites.mjs',

@@ -2,14 +2,16 @@ const {app,BrowserWindow,session}=require('electron')
 const {createHash}=require('node:crypto')
 const path=require('node:path')
 const fs=require('node:fs/promises')
-const safe=value=>{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||u.hostname==='localhost'||/\.(local|internal|localhost)$/.test(u.hostname)||/^\d|:/.test(u.hostname))throw Error('网站地址不受支持');return u.href}
+const {isIP}=require('node:net')
+const blockedHost=host=>host==='localhost'||/\.(local|internal|localhost)$/.test(host)||isIP(host.replace(/^\[|\]$/g,''))||host.includes(':')
+const safe=value=>{const u=new URL(value);if(u.protocol!=='https:'||u.username||u.password||blockedHost(u.hostname))throw Error('网站地址不受支持');return u.href}
 exports.run=async function(encoded){
   let window,timer,isolated
   const finish=value=>process.stdout.write('HUANYU_SITE_RESULT='+JSON.stringify(value)+'\n')
   try{
     const input=JSON.parse(Buffer.from(encoded,'base64url').toString())
     const base=safe(input.url)
-    if(!['verify','read','search'].includes(input.mode)||typeof input.profile!=='string'||!path.isAbsolute(input.profile))throw Error('网站请求无效')
+    if(!['verify','read','search','api'].includes(input.mode)||typeof input.profile!=='string'||!path.isAbsolute(input.profile))throw Error('网站请求无效')
     app.setName('幻屿网站验证')
     app.setPath('userData',input.profile)
     await app.whenReady()
@@ -25,9 +27,11 @@ exports.run=async function(encoded){
       }
       done({requestHeaders:details.requestHeaders})
     })
-    isolated.webRequest.onBeforeRequest((details,done)=>{try{const u=new URL(details.url);if(['http:','file:','ftp:'].includes(u.protocol)||u.hostname==='localhost'||/^\d|:/.test(u.hostname)||/\.(local|internal|localhost)$/.test(u.hostname))return done({cancel:true});if(/\.(m3u8|mp4|webm)(?:$|\?)/i.test(u.href)&&!/(?:trailer|advert|\/ads?\/)/i.test(u.href))media.add(u.href);done({})}catch{done({cancel:true})}})
+    isolated.webRequest.onBeforeRequest((details,done)=>{try{const u=new URL(details.url);if(['http:','file:','ftp:'].includes(u.protocol)||blockedHost(u.hostname))return done({cancel:true});if(/\.(m3u8|mp4|webm)(?:$|\?)/i.test(u.href)&&!/(?:trailer|advert|\/ads?\/)/i.test(u.href))media.add(u.href);done({})}catch{done({cancel:true})}})
     window=new BrowserWindow({width:1250,height:900,show:input.mode==='verify',title:'幻屿 · 网站验证',autoHideMenuBar:true,webPreferences:{session:isolated,sandbox:true,contextIsolation:true,nodeIntegration:false,webSecurity:true,backgroundThrottling:false}})
     if(input.mode==='verify'){window.show();window.focus()}
+    let pageStatus=200
+    window.webContents.on('did-navigate',(_event,_url,status)=>{pageStatus=status})
     window.webContents.setWindowOpenHandler(()=>({action:'deny'}))
     window.webContents.on('will-navigate',(event,url)=>{try{safe(url)}catch{event.preventDefault()}})
     timer=setTimeout(()=>{finish({error:'网站加载超时，请重新打开验证窗口'});if(window&&!window.isDestroyed())window.destroy();app.exit(0)},input.mode==='verify'?15*60*1000:24000)
@@ -37,8 +41,19 @@ exports.run=async function(encoded){
       await isolated.cookies.flushStore();isolated.flushStorageData();finish({verified:true});return
     }
     await window.loadURL(base)
-    const gate=async()=>window.webContents.executeJavaScript(`(()=>{const t=document.body?.innerText||'';return /游客访问|访问密码|图形验证码|人机验证|verify you are human|just a moment/i.test(t.slice(0,2200))||Array.from(document.querySelectorAll('input[type=password]')).some(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden')})()`)
+    const gate=async()=>window.webContents.executeJavaScript(`(()=>{const t=(document.title||'')+' '+(document.body?.innerText||'');return /游客访问|访问密码|图形验证码|人机验证|安全验证|播放限制|verify you are human|just a moment/i.test(t.slice(0,2200))||Array.from(document.querySelectorAll('input[type=password]')).some(e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden')})()`)
     if(await gate()){finish({needsVerification:true,error:'网站需要登录或人工验证，请打开网站验证窗口完成后重试'});return}
+    if(pageStatus>=400)throw Error(`网站暂时无法访问（HTTP ${pageStatus}），请稍后重试`)
+    if(input.mode==='api'){
+      const apiUrl=safe(input.apiUrl)
+      if(new URL(apiUrl).origin!==new URL(base).origin)throw Error('搜索接口必须属于当前网站')
+      const response=await isolated.fetch(apiUrl,{headers:{Accept:'application/json',Referer:base}})
+      const text=await response.text()
+      if(text.length>2000000)throw Error('搜索接口返回内容过大')
+      let data
+      try{data=JSON.parse(text)}catch{finish({needsVerification:response.status===403||/验证码|人机验证|just a moment/i.test(text),error:'搜索接口未返回可读取的结果'});return}
+      finish({url:apiUrl,data});return
+    }
     if(input.mode==='search' && typeof input.query==='string') {
       const searched=await window.webContents.executeJavaScript(`(()=>{const field=document.querySelector('input[name="s"],input[name="wd"],input[name="keyword"],input[type="search"]');if(!field||!field.form)return false;field.value=${JSON.stringify(input.query.slice(0,150))};field.form.requestSubmit();return true})()`)
       if(!searched){finish({error:'未识别到站内搜索框，请在设置中填写含 {query} 的搜索结果页地址'});return}
@@ -46,12 +61,23 @@ exports.run=async function(encoded){
     }
     await new Promise(resolve=>setTimeout(resolve,650))
     if(await gate()){finish({needsVerification:true,error:'网站需要人工验证，请打开网站验证窗口处理'});return}
+    if(pageStatus>=400)throw Error(`网站暂时无法访问（HTTP ${pageStatus}），请稍后重试`)
     if(Number.isInteger(input.episodeIndex))await window.webContents.executeJavaScript(`(()=>{const e=document.querySelectorAll('.wp-playlist-item')[${Math.max(0,Math.min(input.episodeIndex,1000))}];e?.click()})()`)
     await window.webContents.executeJavaScript(`(()=>{for(const v of document.querySelectorAll('video')){v.muted=true;v.play().catch(()=>{})}})()`)
     if(input.mode==='read')await new Promise(resolve=>setTimeout(resolve,1500))
+    if(input.mode==='read'&&/\/(?:bangumi|vodplay|play)\//.test(new URL(base).pathname)){
+      for(let attempt=0;attempt<8;attempt++){
+        for(const frame of window.webContents.mainFrame.framesInSubtree)try{await frame.executeJavaScript(`(()=>{for(const v of document.querySelectorAll('video')){v.muted=true;v.play().catch(()=>{})}document.querySelector('.art-mask,.vjs-big-play-button,.dplayer-play-icon,.plyr__control--overlaid')?.click()})()`)}catch{}
+        if([...media].some(url=>/\.m3u8(?:$|\?)/i.test(url)))break
+        await new Promise(resolve=>setTimeout(resolve,500))
+      }
+    }
     const snapshot=await window.webContents.executeJavaScript(`(()=>{const root=document.querySelector('main')||document.body;return{url:location.href,title:document.querySelector('h1.entry-title,h1.title,h1')?.innerText||document.title,text:root.innerText.slice(0,4500),image:root.querySelector('article img,.entry-content img,.detail-pic img,img')?.src||'',links:Array.from(root.querySelectorAll('a[href]')).slice(0,1200).map(a=>({title:(a.getAttribute('title')||a.innerText).trim().slice(0,200),url:a.href,image:a.querySelector('img')?.src||''})),playlists:Array.from(document.querySelectorAll('script.wp-playlist-script')).slice(0,6).map(e=>e.textContent.slice(0,150000)),scripts:Array.from(document.scripts).filter(s=>!s.src&&/player_|m3u8|src0|src1|tracks/.test(s.textContent)).slice(0,12).map(s=>s.textContent.slice(0,150000)),videos:Array.from(document.querySelectorAll('video,source')).map(v=>v.currentSrc||v.src).filter(Boolean)}})()`)
     const extra=await window.webContents.executeJavaScript(`(()=>{const visible=e=>e.getClientRects().length&&getComputedStyle(e).visibility!=='hidden';return{documentTitle:document.title,visibleTitle:Array.from(document.querySelectorAll('h1,h2,h3,h4,h5')).find(e=>visible(e)&&e.innerText.trim()&&!/登录|注册|基本信息/.test(e.innerText))?.innerText||'',roadLabels:Array.from(document.querySelectorAll('[role=tab],.nav-tabs .nav-link')).map(e=>e.innerText.trim()).filter(Boolean)}})()`)
-    finish({...snapshot,...extra,media:[...media].slice(0,12),mediaHeaders})
+    const chapters=await window.webContents.executeJavaScript(`(()=>{const groups=Array.from(document.querySelectorAll('ul.anthology-list-play,.module-play-list-content,.module-player-list'));const labels=Array.from(document.querySelectorAll('.anthology-tab a,.anthology-tab .swiper-slide,.module-tab-item,.play_source_tab .swiper-slide')).map(e=>e.innerText.trim());return{chapterGroups:groups.map((g,i)=>({name:labels[i]||'线路 '+(i+1),episodes:Array.from(g.querySelectorAll('a[href]')).map(a=>({title:a.innerText.trim(),url:a.href}))})),poster:document.querySelector('.module-info-poster img,.detail-pic img,.video-info-poster img')?.getAttribute('data-original')||document.querySelector('.module-info-poster img,.detail-pic img,.video-info-poster img')?.src||'',detailTitle:document.querySelector('.module-info-heading h1,.page-title,.detail-info h1,.thumb-content h1')?.innerText||''}})()`)
+    const frameStates=await Promise.all(window.webContents.mainFrame.framesInSubtree.map(async frame=>{try{return await frame.executeJavaScript(`(()=>({title:document.title,needsVerification:/验证码|人机验证|verify you are human/i.test(document.body?.innerText||''),videos:Array.from(document.querySelectorAll('video')).map(v=>({src:v.currentSrc||v.src,duration:v.duration,error:v.error?.message}))}))()`)}catch{return{unavailable:true}}}))
+    if(frameStates.some(frame=>frame.needsVerification)&&!frameStates.some(frame=>frame.videos?.some(v=>v.duration>180&&!v.error))){finish({needsVerification:true,error:'网站播放器需要人工验证，请在弹出窗口中完成'});return}
+    finish({...snapshot,...extra,...chapters,media:[...media].slice(0,12),mediaHeaders,frameStates})
   }catch(error){finish({error:String(error.message).slice(0,200)})}
   finally{clearTimeout(timer);if(isolated)await isolated.cookies.flushStore().catch(()=>{});if(window&&!window.isDestroyed())window.destroy();app.exit(0)}
 }
