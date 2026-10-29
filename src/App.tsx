@@ -110,7 +110,7 @@ const sourceNames = {
 }
 const pageNames = {
   home: '本季新番',
-  library: '我的片库',
+  library: '我的收藏',
   tv: '电视剧',
   'movie-discovery': '豆瓣高分电影',
   games: '游戏空间',
@@ -1534,7 +1534,18 @@ export default function App() {
   }
   function replaceResource(media: Media) {
     setPlaying(null)
-    setImporting({mode: media.source === 'local' ? 'local' : 'quark', preset: media.title, replacement: media})
+    // Re-select through the same resource search used by "查找播放资源", so
+    // online lines and public Quark shares are offered before manual import.
+    // Manual local/link import stays available from that dialog as a fallback.
+    setResourceTarget({
+      id: media.subjectId || '',
+      title: media.title,
+      subtitle: media.subtitle || '',
+      description: media.description || '',
+      image: media.cover || '',
+      category: categoryOf(media),
+      replaceMediaId: media.id,
+    })
   }
   useEffect(() => {
     refresh()
@@ -1825,17 +1836,16 @@ export default function App() {
     if(episode){setResourceTarget(null);setPlaying({mediaId:id,episode})}
     else notify('本集记录未能保存，请重新选择片源')
   }
+  const collectionPage = page === 'favorites' || page === 'library'
   const visible = useMemo(() => {
     let items = media.filter((m) =>
-      page === 'library'
-        ? m.source !== 'sample'
-        : page === 'favorites'
-          ? m.favorite
-          : page === 'history'
-            ? latestProgress(m)
-            : m.source !== 'sample' || state?.settings.showSamples,
+      collectionPage
+        ? m.source !== 'sample' && (m.source !== 'catalog' || m.favorite)
+        : page === 'history'
+          ? latestProgress(m)
+          : m.source !== 'sample' || state?.settings.showSamples,
     )
-    items=items.filter(item=>item.source!=='catalog' || (page==='favorites' && !media.some(linked=>linked.subjectId===item.subjectId && linked.source!=='catalog' && linked.favorite)))
+    items=items.filter(item=>item.source!=='catalog' || (collectionPage && !media.some(linked=>linked.subjectId===item.subjectId && linked.source!=='catalog' && linked.favorite)))
     if (query.trim())
       items = items.filter((m) =>
         `${m.title} ${m.subtitle || ''}`
@@ -1843,7 +1853,7 @@ export default function App() {
           .includes(query.trim().toLowerCase()),
       )
     if (page === 'tv')items=items.filter(m=>categoryOf(m)==='tv')
-    if(page==='library' && libraryCategory!=='all')items=items.filter(item=>categoryOf(item)===libraryCategory)
+    if(collectionPage && libraryCategory!=='all')items=items.filter(item=>categoryOf(item)===libraryCategory)
     if (genre !== '全部') items = items.filter((m) => m.genre === genre)
     if (source !== 'all') items = items.filter((m) => m.source === source)
     if (sort === 'title')
@@ -1903,7 +1913,7 @@ export default function App() {
   }, [games, query])
   const nav = (newPage: NavTarget) => {
     const category=newPage==='movies'?'movie':newPage==='anime'?'anime':null
-    setPage(newPage==='anime'||newPage==='movies'?'library':newPage)
+    setPage(newPage==='anime'||newPage==='movies'||newPage==='library'?'favorites':newPage)
     setLibraryCategory(category || 'all')
     setQuery('')
     setGenre('全部')
@@ -1949,7 +1959,6 @@ export default function App() {
               { id: 'home', icon: LayoutGrid, label: '新番' },
               { id: 'tv', icon: Tv, label: '电视剧' },
               { id: 'movie-discovery', icon: Star, label: '高分电影' },
-              { id: 'library', icon: FolderOpen, label: '片库' },
               { id: 'games', icon: Gamepad2, label: '游戏' },
               { id: 'favorites', icon: Heart, label: '收藏' },
               { id: 'history', icon: History, label: '最近观看' },
@@ -1979,7 +1988,7 @@ export default function App() {
               <Search size={17} />
               <input
                 ref={search}
-                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : page === 'library' ? '搜索片库中的作品' : page === 'tv' ? '搜索电视剧名称' : '搜索你想看的故事'}
+                placeholder={page === 'movie-discovery' ? '搜索电影名称或原名' : collectionPage ? '搜索片库与收藏中的作品' : page === 'tv' ? '搜索电视剧名称' : '搜索你想看的故事'}
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 aria-label="搜索作品"
@@ -2059,13 +2068,11 @@ export default function App() {
                       ? '按片名寻找，按类型探索，把喜欢的电影收进片库。'
                       : page === 'tv'
                         ? '收藏云端剧集，寻找在线片源，把每一季的故事接着看。'
-                      : page === 'library'
+                      : collectionPage
                         ? `${real.length} 部作品，${real.reduce((n, m) => n + m.episodes.length, 0)} 个视频，都是你的珍藏。`
                         : page === 'games'
                           ? '把本机收藏的游戏排成一排，点击封面就能回到冒险。'
-                          : page === 'favorites'
-                            ? '那些舍不得散场的故事，值得再看一次。'
-                            : '每一次暂停，都是下一次相遇的起点。'}
+                          : '每一次暂停，都是下一次相遇的起点。'}
               </p>
             </div>
             {page === 'movie-discovery' ? <button className="button outline import-main" onClick={() => nav('movies')}><Film size={17} /> 电影片库</button> : page === 'games' ? (
@@ -2266,9 +2273,9 @@ export default function App() {
           {page === 'tv' && <TvSearch query={query} onQuery={setQuery} onImport={() => setImporting({ mode: 'quark' })} media={media} onLibraryChange={data=>{setState(data);notify('收藏状态已更新，剧集已保存在追剧片库')}} onPlaySaved={playSavedOnline} onImported={(data,ids,count)=>{setState(data);nav('tv');setSelected(ids[0] || null);notify(`已将 ${count} 个视频导入电视剧区`)}} />}
           {page !== 'home' && page !== 'games' && page !== 'movie-discovery' && (
             <section className="library-section">
-              {page==='favorites'&&<p className="favorites-note">新番与高分电影可以先收藏作品，点击封面即可查找片源；已入库的影片支持直接选集。</p>}
-              {page==='library'&&<div className="library-category-tabs" role="group" aria-label="片库影视分类">{(['all','anime','movie','tv'] as const).map(category=><button key={category} type="button" aria-pressed={libraryCategory===category} className={libraryCategory===category?'active':''} onClick={()=>{setLibraryCategory(category);setGenre('全部');setQuery('')}}>{category==='all'?'全部影视':categoryName(category)}<span>{real.filter(item=>category==='all'||categoryOf(item)===category).length}</span></button>)}</div>}
-              {page === 'library' && libraryCategory==='movie' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
+              {collectionPage&&<p className="favorites-note">片库与收藏已合并：这里收纳全部作品、作品收藏和已收藏的游戏，点击封面即可选集或查找片源。</p>}
+              {collectionPage&&<div className="library-category-tabs" role="group" aria-label="片库影视分类">{(['all','anime','movie','tv'] as const).map(category=><button key={category} type="button" aria-pressed={libraryCategory===category} className={libraryCategory===category?'active':''} onClick={()=>{setLibraryCategory(category);setGenre('全部');setQuery('')}}>{category==='all'?'全部影视':categoryName(category)}<span>{real.filter(item=>category==='all'||categoryOf(item)===category).length}</span></button>)}</div>}
+              {collectionPage && libraryCategory==='movie' && <div className="movie-discovery-entry"><div><Star size={17} /><span>{query.trim() ? '还可以到豆瓣高分片单中查找这部电影。' : '想看点新的？到豆瓣高分片单里挑一部。'}</span></div><button onClick={() => setPage('movie-discovery')}>{query.trim() ? '搜索高分片单' : '探索高分电影'}<ArrowUpRight size={14} /></button></div>}
               <div className="library-heading">
                 <div className="section-title">
                   <h2>{page === 'tv' ? query ? '片库中匹配的电视剧' : '我的追剧片库' : query ? '搜索结果' : pageNames[page]}</h2>
@@ -2329,8 +2336,8 @@ export default function App() {
                     <option value="local">本地视频</option>
                     <option value="quark">夸克网盘</option>
                     <option value="url">在线片源</option>
-                    {page==='favorites'&&<option value="catalog">作品收藏 · 待选片源</option>}
-                    {page !== 'library' && page !== 'tv' && (
+                    {collectionPage&&<option value="catalog">作品收藏 · 待选片源</option>}
+                    {!collectionPage && page !== 'tv' && (
                       <option value="sample">示例片单</option>
                     )}
                   </select>
@@ -2480,12 +2487,12 @@ export default function App() {
                     )
                   })}
                 </div>
-              ) : page === 'favorites' && favoriteGames.length ? null : (
+              ) : collectionPage && favoriteGames.length ? null : (
                 <div className="empty-state">
                   <span className="empty-icon">
                     {query ? (
                       <Search size={31} />
-                    ) : page === 'favorites' ? (
+                    ) : collectionPage ? (
                       <Heart size={32} />
                     ) : page === 'history' ? (
                       <History size={33} />
@@ -2496,7 +2503,7 @@ export default function App() {
                   <h3>
                     {query || genre !== '全部' || source !== 'all'
                       ? '这一次，还没有找到'
-                      : page === 'favorites'
+                      : collectionPage
                         ? '把喜欢的故事，留在这里'
                         : page === 'history'
                           ? '你的第一场放映，即将开始'
@@ -2529,7 +2536,7 @@ export default function App() {
                   )}
                 </div>
               )}
-              {page === 'favorites' && favoriteGames.length > 0 && (
+              {collectionPage && favoriteGames.length > 0 && (
                 <section className="favorite-games-block">
                   <div className="favorite-games-heading">
                     <h3>收藏的游戏</h3>
@@ -2573,7 +2580,7 @@ export default function App() {
       )}
       {resourceTarget && (
         <Dialog
-          title={resourceTarget.category === 'movie' ? '查找电影片源' : resourceTarget.category === 'tv' ? '查找电视剧片源' : '查找动漫片源'}
+          title={resourceTarget.replaceMediaId ? '重新选择视频资源' : resourceTarget.category === 'movie' ? '查找电影片源' : resourceTarget.category === 'tv' ? '查找电视剧片源' : '查找动漫片源'}
           className="resource-dialog"
           onClose={() => {
             if (!resourceBusy) setResourceTarget(null)
@@ -2585,11 +2592,12 @@ export default function App() {
             onFavoriteChange={setState}
             onPlaySaved={playSavedOnline}
             onManualImport={() => {
+              const replacement = state?.media.find(media => media.id === resourceTarget.replaceMediaId)
               setImporting({
-                mode: 'quark',
+                mode: replacement?.source === 'local' ? 'local' : 'quark',
                 preset: resourceTarget.title,
                 subject: resourceTarget.replaceMediaId ? undefined : resourceTarget,
-                replacement: state?.media.find(media => media.id === resourceTarget.replaceMediaId),
+                replacement,
               })
               setResourceTarget(null)
             }}
@@ -2617,7 +2625,7 @@ export default function App() {
           categoryPreset={
             importing.replacement ? categoryOf(importing.replacement) : importing.subject
               ? importing.subject.category || 'anime'
-              : page === 'library' && libraryCategory!=='all' ? libraryCategory
+              : collectionPage && libraryCategory!=='all' ? libraryCategory
                 : page === 'tv'
                   ? 'tv'
                   : undefined

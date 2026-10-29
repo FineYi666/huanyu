@@ -83,7 +83,7 @@ function Manager({ onClose }: { onClose: () => void }) {
       <p>{type === 'page' ? '支持 DDYS 等页面播放列表，读取公开可用线路并校验播放。需要访问验证时，可先保存，再点击“验证 / 登录”自行处理；不支持的播放器会明确提示。'
         : type === 'vod' ? '支持兼容苹果 CMS / MacCMS 的 JSON 接口。继续核对片名、集数、画质和播放入口。'
           : type === 'quark' ? '用 {query} 代表搜索关键词。自动读取网页和作品详情中的公开夸克分享。'
-            : '用 {query} 代表搜索关键词。显示网站搜索入口，点击后前往该站查看；此方式不自动导入片源。'}</p>
+            : '用 {query} 代表搜索关键词。只提供手动打开入口，不自动导入；中创网等夸克聚合站已内置在「夸克盘搜」中，可直接搜索。'}</p>
       <button className="button outline" type="submit" disabled={busy || !sites}>{busy?<LoaderCircle className="spin" size={15}/>:<Plus size={15} />}添加并启用</button>
     </form>
     {error && <p className="form-error" role="alert">{error}</p>}

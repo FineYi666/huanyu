@@ -175,7 +175,7 @@ export function createWebSources({
     const found=[],seen=new Set()
     const deadline=Date.now()+45000
     let candidatePages=0,supportedPages=0
-    terms:for(const term of workSearchTerms(query,aliases).slice(0,2)){
+    terms:for(const term of workSearchTerms(query,aliases).slice(0,4)){
       if(Date.now()>deadline)break
       let search
       if(source.suggest&&readSiteApi){
@@ -198,6 +198,8 @@ export function createWebSources({
         page.workTitle=candidate.title
         const roads=parsePageSources(page,category)
         candidatePages++;if(roads.length)supportedPages++
+        const failedRoads=[]
+        let verifiedForPage=false
         for(const road of roads.slice(0,source.id==='age'?3:8)){
           if(Date.now()>deadline||found.length>=2)break terms
           if(source.id==='age'){
@@ -209,8 +211,19 @@ export function createWebSources({
           const episode=road.episodes[0]
           try{const checked=await probeEpisode(source,road,episode);const height=resolutionHeight(checked.width,checked.height);if(height&&height<minHeight)continue
             const item={...road,id:`web-${source.id}-${idFor(`${road.pageUrl || page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:road.pageUrl || page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:checked.width,height:checked.height,quality:qualityLabel(height),checkedAt:new Date(now()).toISOString(),checkedEpisode:episode.id}
-            records.set(item.id,{item,expires:now()+20*60000});found.push(item);onProgress?.(found)
-          }catch(error){if(error.needsVerification)throw error}
+            records.set(item.id,{item,expires:now()+20*60000});found.push(item);verifiedForPage=true;onProgress?.(found)
+          }catch(error){if(error.needsVerification)throw error;failedRoads.push(road)}
+        }
+        // DDYS exposes the same episodes on a US (v3) and an Asia (v2) node.
+        // v2 may reject this machine's probe while still being playable through
+        // the user's browser/proxy; keep it as a selectable "待确认" road when
+        // at least one DDYS road for this work is verified instead of hiding it.
+        if(source.id==='ddys'&&verifiedForPage&&failedRoads.length){
+          for(const road of failedRoads.slice(0,3)){
+            const item={...road,id:`web-${source.id}-${idFor(`${road.pageUrl || page.url}/${road.pageSeason||1}/${road.pageNodeId}`)}`,sourceId:source.id,providerItemId:road.pageUrl || page.url,sourceName:source.name,libraryKey:`online-${idFor(`${category}/${canonicalWorkKey(road.title)}`)}`,minHeight,width:0,height:0,quality:'清晰度待确认',checkedAt:null,checkedEpisode:null}
+            records.set(item.id,{item,expires:now()+20*60000});found.push(item)
+          }
+          onProgress?.(found)
         }
       }
       if(found.length)break

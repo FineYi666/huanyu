@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import {matchesWork,workSearchTerms,animeTitleRelevant} from '../media-match.mjs'
 import {seasonNumber} from '../episode-seasons.mjs'
 import {ANIME_PAGE_SOURCES,isAnimeSource} from '../anime-sources.mjs'
-import {parsePageSources,pageMediaUrls} from '../page-sources.mjs'
+import {parsePageSources,pageMediaUrls,pageTitle} from '../page-sources.mjs'
+import {createWebSources} from '../web-sources.mjs'
 import {fetchSeasonal,createSeasonalService,seasonAt} from '../seasonal.mjs'
 import {mkdtemp,mkdir,writeFile,rm} from 'node:fs/promises'
 import path from 'node:path'
@@ -18,6 +19,52 @@ test('anime subtitles, translated family names and Roman seasons match without m
   assert.equal(animeTitleRelevant('无职转生（更新至第3季）','无职转生 第三季'),true)
   assert.equal(matchesWork({title:'转生成为魔剑 第二季',type:'动漫'},'转生就是剑 第二季',{category:'anime'}),true)
 })
+test('listing edition tags and punctuation do not hide an available work',()=>{
+  // DDYS lists this show as "学生会也有洞 无修正版 (更新至04)" while the
+  // seasonal catalog uses "学生会也有洞！". Both decorations must be ignored.
+  assert.equal(pageTitle('学生会也有洞 无修正版 (更新至04)'),'学生会也有洞')
+  assert.equal(animeTitleRelevant(pageTitle('学生会也有洞 无修正版 (更新至04)'),'学生会也有洞！'),true)
+  assert.ok(workSearchTerms('学生会也有洞！').includes('学生会也有洞'))
+  assert.equal(matchesWork({title:'学生会也有洞',type:'动漫'},'学生会也有洞！',{category:'anime'}),true)
+})
+
+test('DDYS exposes both public nodes as separate playback roads',()=>{
+  const playlist={playlistType:'anime',nodes:[{id:'v1',label:'VIP线路1',access:'vip'},{id:'v3',label:'美国线路',access:'public'},{id:'v2',label:'亚太线路',access:'public'}],seasons:[{season:1,title:'第1季',tracks:[{episode:1,title:'1',nodeSources:{v3:'https://v3.ddys.app/ep1.mp4',v2:'https://v2.ddys.app/ep1.mp4'}},{episode:2,title:'2',nodeSources:{v3:'https://v3.ddys.app/ep2.mp4',v2:'https://v2.ddys.app/ep2.mp4'}}]}]}
+  const page={url:'https://ddys.app/the-apothecary-diaries/',title:'药屋少女的呢喃 (更新至 第3季04)',playlists:[JSON.stringify(playlist)]}
+  const roads=parsePageSources(page,'anime')
+  assert.deepEqual(roads.map(road=>[road.road,road.episodes.length,road.episodes[0].url]),[
+    ['美国线路',2,'https://v3.ddys.app/ep1.mp4'],
+    ['亚太线路',2,'https://v2.ddys.app/ep1.mp4'],
+  ])
+})
+
+test('a page source retries the punctuation-free term and verifies the episode',async()=>{
+  const provider={id:'ddys',name:'DDYS',api:'https://ddys.app/',anime:true,page:true,site:{id:'ddys',name:'DDYS',type:'page',url:'https://ddys.app/',enabled:true}}
+  const detail={
+    url:'https://ddys.app/even-the-student-council-has-its-holes/',
+    title:'学生会也有洞 无修正版 (更新至04)',
+    image:'https://ddys.app/poster.jpg',text:'2026年10月5日 动画、本季新番',
+    links:[],chapterGroups:[{name:'线路1',episodes:[{title:'第01集',url:'https://ddys.app/play/1-1-1.html'},{title:'第02集',url:'https://ddys.app/play/1-1-2.html'}]}],
+  }
+  const queries=[]
+  const sources=createWebSources({
+    providers:[provider],
+    now:()=>1793000000000,
+    probe:async()=>({width:1920,height:1080,format:'mp4'}),
+    searchPage:async(_site,query)=>{
+      queries.push(query)
+      return {links:query==='学生会也有洞'?[{title:'学生会也有洞 无修正版 (更新至04)',url:detail.url}]:[]}
+    },
+    readPage:async(_site,url)=>url===detail.url?structuredClone(detail):{url,media:['https://cdn.ddys.app/ep1.m3u8'],mediaHeaders:{}},
+  })
+  const value=await sources.search('学生会也有洞！',{category:'anime',minHeight:1080})
+  assert.deepEqual(queries,['学生会也有洞！','学生会也有洞'])
+  assert.equal(value.results.length,1)
+  assert.equal(value.results[0].sourceName,'DDYS')
+  assert.equal(value.results[0].title,'学生会也有洞')
+  assert.equal(value.results[0].episodes.length,2)
+})
+
 test('the anime online allowlist contains exactly the six requested providers',()=>{
   assert.deepEqual(ANIME_PAGE_SOURCES.map(s=>s.id),['ddys','mgn','mute','lmm','age'])
   for(const source of [...ANIME_PAGE_SOURCES,{id:'giri'}])assert.equal(isAnimeSource(source),true)

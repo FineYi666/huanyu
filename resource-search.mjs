@@ -85,6 +85,21 @@ export function resourceRelevance(title, query) {
   const name = normalized(title), target = normalized(query)
   if (!target || !name.includes(target)) return 0
   if (/课程|网课|数学|考研|电子书|教程|游戏资源|电影解说|混剪/.test(title) && !/课程|网课|数学|考研|电子书|教程|游戏/.test(query)) return 0
+  // Franchise entries often read "JOJO的奇妙冒险 飙马野郎 1080p" or
+  // "J JOJO的奇妙冒险.飙马野郎1080日语中字". When the requested name sits on a
+  // real word boundary, the surrounding franchise/quality text is not noise.
+  const raw = String(title || '')
+  const rawAt = raw.toLowerCase().indexOf(String(query || '').trim().toLowerCase())
+  if (rawAt >= 0) {
+    const before = raw.slice(0, rawAt)
+    const after = raw.slice(rawAt + String(query || '').trim().length)
+    const beforeOk = !before || /[\s\-_.·:：/（(【\[,，、|｜]$/.test(before)
+    const afterOk =
+      !after ||
+      /^[\s\-_.·:：/）)】\],，、|｜]/.test(after) ||
+      /^(?:\d{4}|全|第|全集|完结|未删减|国语|粤语|日语|英语|中字|中文|4k|2160|1080|720|高清|超清|蓝光|web|bd|hd|bluray|remux|s\d|season)/i.test(after)
+    if (beforeOk && afterOk) return 3
+  }
   const at = name.indexOf(target), before = name.slice(0, at), after = name.slice(at + target.length)
   const prefix = !before || /^(?:\d+|名称|电视剧|剧集|国产剧|大陆剧|电影|动漫|动画|\d{4})$/.test(before)
   const suffix = !after || /^(?:\d{4}|全|第|全集|完结|未删减|国语|粤语|日语|英语|中字|中文|4k|2160|1080|720|高清|超清|蓝光|web|bd|hd|bluray|remux|s\d|season)/i.test(after)
@@ -277,14 +292,33 @@ export function createResourceSearch({
             const value = await renderSearch(queries.slice(0, 2))
             if (value.error && !value.rows.length)
               throw new Error(value.error)
-            return extractQuarkResults(
-              value.rows.map((row) => ({
-                ...row,
-                content: `${row.description || row.title}\n${row.url}`,
-                source: '夸克盘搜',
-              })),
-              this.url,
-            )
+            return value.rows.flatMap((row) => {
+              try {
+                const parsed = parseQuarkShare(row.url)
+                return [
+                  {
+                    id: createHash('sha256')
+                      .update(parsed.shareId)
+                      .digest('hex')
+                      .slice(0, 16),
+                    title:
+                      String(row.title || row.description || '')
+                        .replace(/\s+/g, ' ')
+                        .trim()
+                        .slice(0, 180) || '夸克视频资源',
+                    description: String(row.description || '')
+                      .replace(/\s+/g, ' ')
+                      .slice(0, 850),
+                    url: parsed.shareUrl,
+                    code: parsed.passcode,
+                    source: '夸克盘搜',
+                    sourceUrl: this.url,
+                  },
+                ]
+              } catch {
+                return []
+              }
+            })
           },
         }
         const fastProviders = [

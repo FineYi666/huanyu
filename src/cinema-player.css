@@ -613,3 +613,178 @@ html .player-dialog .video-stage:fullscreen {
   padding: 10px 12px;
   max-width: 190px;
 }
+
+/* Skin-aware cinema surface: the player keeps cinematic contrast, but its
+   panels, borders, controls and gradients take the active skin accent. */
+.cinema-video,
+.cinema-video video {
+  background: var(--cinema-bg);
+}
+.cinema-top {
+  background: linear-gradient(
+    color-mix(in srgb, var(--cinema-bg) 88%, #000) 0%,
+    color-mix(in srgb, var(--cinema-bg) 55%, transparent) 55%,
+    transparent 100%
+  );
+}
+.cinema-bottom {
+  background: linear-gradient(
+    transparent,
+    color-mix(in srgb, var(--cinema-bg) 82%, transparent) 45%,
+    color-mix(in srgb, var(--cinema-bg) 94%, #000) 100%
+  );
+}
+.cinema-seek {
+  background: linear-gradient(
+    to right,
+    var(--cinema-accent) var(--played),
+    rgb(var(--accent-rgb) / 0.22) var(--played)
+  );
+}
+.cinema-seek::-webkit-slider-thumb {
+  background: var(--cinema-accent);
+  box-shadow: 0 0 12px rgb(var(--accent-rgb) / 0.38);
+}
+.cinema-hud button:hover {
+  background: rgb(var(--accent-rgb) / 0.16);
+}
+.cinema-hud button:focus-visible,
+.cinema-hud select:focus-visible,
+.cinema-hud input:focus-visible {
+  outline-color: var(--cinema-accent);
+}
+.cinema-time i,
+.cinema-select > span {
+  color: var(--cinema-muted);
+}
+.cinema-volume {
+  accent-color: var(--cinema-accent);
+}
+.cinema-select select {
+  color: var(--cinema-text);
+  background: rgb(var(--accent-rgb) / 0.1);
+  border-color: var(--cinema-line);
+}
+.cinema-select option {
+  color: var(--cinema-text);
+  background: color-mix(in srgb, var(--cinema-bg) 82%, #000);
+}
+.cinema-center-play {
+  border-color: rgb(var(--accent-rgb) / 0.5);
+  background: color-mix(in srgb, var(--cinema-bg) 70%, transparent);
+}
+.cinema-buffer {
+  background: color-mix(in srgb, var(--cinema-bg) 72%, transparent);
+  color: var(--cinema-muted);
+}
+.cinema-buffer i {
+  border-color: rgb(var(--accent-rgb) / 0.22);
+  border-top-color: var(--cinema-accent);
+}
+.cinema-notice {
+  background: color-mix(in srgb, var(--cinema-bg) 88%, transparent);
+  border-color: var(--cinema-line);
+  color: var(--cinema-text);
+}
+html .online-cinema-dialog {
+  background: var(--cinema-panel);
+  border-color: var(--cinema-line);
+  color: var(--cinema-text);
+}
+.cinema-window-header {
+  background: color-mix(in srgb, var(--cinema-panel) 86%, #000);
+  border-bottom-color: var(--cinema-line);
+  color: var(--cinema-text);
+}
+.cinema-window-header > button {
+  color: var(--cinema-text);
+}
+.cinema-window-header > button:hover {
+  background: rgb(var(--accent-rgb) / 0.14);
+}
+.cinema-window-header > div > span,
+.cinema-source-badge,
+.cinema-help {
+  color: var(--cinema-muted);
+}
+.online-cinema-main {
+  background: var(--cinema-bg);
+}
+.online-cinema-status {
+  background: color-mix(in srgb, var(--cinema-bg) 92%, transparent);
+  color: var(--cinema-muted);
+}
+.online-cinema-status h3 {
+  color: var(--cinema-text);
+}
+.online-cinema-sidebar {
+  background: var(--cinema-panel);
+  border-left-color: var(--cinema-line);
+}
+.cinema-sidebar-heading h3,
+.online-cinema-sidebar select {
+  color: var(--cinema-text);
+}
+.online-cinema-episodes button {
+  background: rgb(var(--accent-rgb) / 0.08);
+  border-color: transparent;
+  color: var(--cinema-muted);
+}
+.online-cinema-episodes button > span {
+  color: var(--cinema-muted);
+}
+.online-cinema-episodes button:hover {
+  border-color: var(--cinema-line);
+}
+.online-cinema-episodes button.active {
+  background: rgb(var(--accent-rgb) / 0.24);
+  border-color: var(--cinema-line);
+  color: var(--cinema-text);
+}
+html .app-shell ~ .player-dialog,
+html .player-dialog {
+  background: var(--cinema-panel);
+  border-color: var(--cinema-line);
+}
+html .player-dialog .video-stage {
+  background: var(--cinema-bg);
+}
+html .player-dialog .player-toolbar {
+  background: color-mix(in srgb, var(--cinema-panel) 86%, #000);
+  border-bottom-color: var(--cinema-line);
+  color: var(--cinema-text);
+}
+html .player-dialog .player-toolbar h3 {
+  color: var(--cinema-text);
+}
+html .player-dialog .player-episodes {
+  background: var(--cinema-panel);
+  border-left-color: var(--cinema-line);
+  color: var(--cinema-muted);
+}
+html .player-dialog .player-episodes h3 {
+  color: var(--cinema-text);
+}
+html .player-dialog .player-episodes > button {
+  color: var(--cinema-muted);
+}
+html .player-dialog .player-episodes > button.active {
+  background: rgb(var(--accent-rgb) / 0.24);
+  color: var(--cinema-text);
+}
+.video-stage {
+  background: var(--cinema-bg);
+}
+.player-status {
+  background: color-mix(in srgb, var(--cinema-bg) 92%, transparent);
+  color: var(--cinema-muted);
+}
+.player-status h3 {
+  color: var(--cinema-text);
+}
+.player-status p {
+  color: var(--cinema-muted);
+}
+.online-cinema-stage:fullscreen {
+  background: var(--cinema-bg);
+}

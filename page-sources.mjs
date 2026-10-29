@@ -2,11 +2,24 @@ import { createHash } from 'node:crypto'
 import { publicVideoUrl } from './stream-probe.mjs'
 import { seasonNumber } from './episode-seasons.mjs'
 const hash=value=>createHash('sha256').update(value).digest('hex').slice(0,24)
-export const pageTitle=value=>String(value||'').replace(/\s*[（(](?:更新至|全\d|已完结|完结)[\s\S]*[）)]\s*$/,'').trim()
+// DDYS-style listings append edition tags and update counters to the work name,
+// e.g. "学生会也有洞 无修正版 (更新至04)". They are not part of the title and must
+// not block the title match, otherwise a work that the site really carries is
+// reported as "未发现匹配".
+const EDITION_TAG=/无修正版|無修正版|未删减版|未刪減版|未删版|未刪版|完整版|导演剪辑版|導演剪輯版|加长版|加長版|重制版|重製版|修复版|修復版|高清版|藍光版|蓝光版|BD版|HD版|TV版|WEB版|数字版|數位版/gi
+const stripEditionSuffix=value=>{
+  let text=String(value||'')
+  for(let i=0;i<3;i++){
+    const next=text.replace(/\s*[（(](?:更新至|更新到|全\s*\d|已完结|完结)[\s\S]*[）)]\s*$/,'').replace(/\s*(?:更新至|更新到)\s*[:：]?\s*[\s\S]*$/,'').replace(/\s*(?:无修正版|無修正版|未删减版|未刪減版|未删版|未刪版|完整版|导演剪辑版|導演剪輯版|加长版|加長版|重制版|重製版|修复版|修復版|高清版|藍光版|蓝光版|BD版|HD版|TV版|WEB版|数字版|數位版)\s*$/i,'').trim()
+    if(next===text)break
+    text=next
+  }
+  return text
+}
+export const pageTitle=value=>stripEditionSuffix(String(value||'').replace(EDITION_TAG,' ').replace(/\s+/g,' '))
 
 export function parsePageSources(page,requestedCategory) {
   if(new URL(page.url).hostname==='www.agedm.io')return parseAgeSources(page)
-  if(requestedCategory==='anime' && page.chapterGroups?.length)return parseChapterSources(page)
   let playlist
   for(const script of [...(page.playlists||[]),...(page.scripts||[])])try{const value=JSON.parse(script);if(value.seasons?.length&&value.nodes?.length){playlist=value;break}}catch{}
   const category=playlist?.playlistType==='movie'?'movie':(page.links||[]).some(link=>/\/category\/anime\//.test(link.url))?'anime':(page.links||[]).some(link=>/\/category\/movie\//.test(link.url))?'movie':playlist?.playlistType?'tv':requestedCategory
@@ -23,6 +36,7 @@ export function parsePageSources(page,requestedCategory) {
     }
     return roads
   }
+  if(requestedCategory==='anime' && page.chapterGroups?.length)return parseChapterSources(page)
   const media=[...new Set([...(page.media||[]),...(page.videos||[])])].flatMap(value=>{try{const url=publicVideoUrl(value);return /\.(?:m3u8|mp4|webm)(?:$|\?)/i.test(url)?[url]:[]}catch{return []}})
   if(media.length && category==='movie')return media.slice(0,3).map((url,index)=>({...common,title:base,road:`网页线路 ${index+1}`,pageNodeId:String(index),episodes:[{id:hash(`${page.url}/1/1`),number:1,season:null,title:'第1集',originalTitle:base,url}]}))
   return []

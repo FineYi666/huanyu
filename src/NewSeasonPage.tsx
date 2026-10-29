@@ -326,8 +326,8 @@ export default function NewSeasonPage({
               value={sort}
               onChange={(e) => setSort(e.target.value)}
             >
-              <option value="date">最近开播</option>
               <option value="rating">评分优先</option>
+              <option value="date">最近开播</option>
               <option value="title">名称排序</option>
             </select>
           </label>
@@ -553,7 +553,7 @@ export function ResourceSearch({
           <img src={subject.image} alt="" referrerPolicy="no-referrer" />
         )}
         <div>
-          <span className="season-kicker">{subject.category === 'movie' ? 'MOVIE SOURCES' : subject.category === 'tv' ? 'SERIES SOURCES' : 'QUARK RESOURCES'}</span>
+          <span className="season-kicker">{subject.category === 'movie' ? 'MOVIE SOURCES' : subject.category === 'tv' ? 'SERIES SOURCES' : 'ANIME SOURCES'}</span>
           <h3>{subject.title}</h3>
           <p>
             {subject.description ||
@@ -603,6 +603,7 @@ export function ResourceSearch({
       <p className="resource-note">
         {subject.category==='movie'||subject.category==='tv'?'同时搜索内置来源与已启用的自定义网站，':'动漫默认搜索 giriGiriLove、DDYS、MG、Mute、路漫漫和 AGE，并补充你已启用的自定义来源，'}
         自动尝试别名。{subject.category === 'movie' ? '请核对片名、版本与字幕' : '请核对季数与字幕'}；导入时验证分享，播放前确认转存。
+        {subject.replaceMediaId?'更换资源时，在线线路会直接播放；导入夸克分享会替换当前作品的视频，封面、简介与收藏保留。':''}
       </p>
       {!!verificationSources.length&&<div className="tv-source-status" aria-label="在线来源搜索状态">{verificationSources.map(source=><span key={source.name} title={source.message} className={source.status==='error'?'unavailable':''}>{source.name}<small>{source.needsVerification?'等待验证':source.count?`${source.count} 条线路`:source.status==='loading'?'查询中…':source.name.startsWith('自定义')?source.message?.slice(0,60)||'无可用线路':source.status==='error'?'暂不可用':'无可用线路'}</small></span>)}</div>}
       <OnlineSources results={webSources} busy={webBusy} error={webError} library={media} onLibraryChange={onFavoriteChange} onPlaySaved={onPlaySaved} onInvalid={(resultId, episodeId) => setWebSources(items => items?.map(item => item.id === resultId ? { ...item, episodes: item.episodes.filter(episode => episode.id !== episodeId) } : item).filter(item => item.episodes.length) || [])} />
@@ -615,7 +616,7 @@ export function ResourceSearch({
           onClick={onManualImport}
         >
           <Link size={15} />
-          已有链接，直接导入
+          {subject.replaceMediaId?'导入本地视频 / 粘贴链接':'已有链接，直接导入'}
         </button>
         <a
           className="resource-source-link text-button"

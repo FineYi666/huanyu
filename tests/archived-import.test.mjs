@@ -127,7 +127,9 @@ test('archived titles import local and Quark episodes with trusted metadata whil
   assert.equal((await cross.json()).media.find((item) => item.id === localMedia.id).title, '跨季度搜索作品')
   const catalog = await (await fetch(origin + '/api/seasonal')).json()
   assert.equal(catalog.season.id, current.id)
-  assert.deepEqual(catalog.items, [])
+  // Saved/seed titles may augment the current quarter, but an archived import
+  // must never leak into it.
+  assert.equal(catalog.items.some((item) => item.id === archived.id), false)
   const persisted = JSON.parse(await readFile(path.join(data, 'library.json'), 'utf8'))
   assert.equal(persisted.media.find((item) => item.id === cloudMedia.id).cover, archived.image)
   const recommended = JSON.parse(await readFile(path.join(appRoot, 'movie-seed.json'), 'utf8')).movies.find((movie) => movie.title === '星际穿越')

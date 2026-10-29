@@ -4,9 +4,15 @@ export const titleKey = (value) =>
     .normalize('NFKC')
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]/gu, '')
+// Edition tags are appended by listing sites and are not part of the work
+// name. Keep them out of every comparison so "学生会也有洞 无修正版" still
+// matches "学生会也有洞！".
+const EDITION_TAG=/无修正版|無修正版|未删减版|未刪減版|未删版|未刪版|完整版|导演剪辑版|導演剪輯版|加长版|加長版|重制版|重製版|修复版|修復版|高清版|藍光版|蓝光版|BD版|HD版|TV版|WEB版|数字版|數位版/gi
 function baseTitle(value) {
   return titleKey(
     String(value || '').normalize('NFKC')
+      .replace(EDITION_TAG,' ')
+      .replace(/\s*[（(](?:更新至|更新到|全\s*\d|已完结|完结)[\s\S]*[）)]/g,' ')
       .replace(
         /第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|\d+(?:st|nd|rd|th)\s+season|s\d{1,2})\b/gi,
         '',
@@ -26,7 +32,11 @@ export function workSearchTerms(query, aliases = []) {
   const base = String(query).replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi, '').trim()
   const short=String(query).split(/\s*[~～〜：:]\s*/)[0].trim()
   const family=short.replace(/第\s*[\d一二两三四五六七八九十]+\s*[季期部]|\b(?:season\s*\d+|s\d{1,2})\b/gi,'').trim()
-  return [...new Set([short, family, query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(term=>term&&term.length>=2))].slice(0, 6)
+  // Site search boxes treat punctuation as literal text ("学生会也有洞！" finds
+  // nothing on DDYS while "学生会也有洞" finds the work), so also try a plain
+  // variant. The original query stays first to preserve exact matches.
+  const plain=value=>String(value||'').replace(/[！!？?。．.、，,；;：:～~〜·・—–\-×]/g,' ').replace(/\s+/g,' ').trim()
+  return [...new Set([short, family, plain(short), plain(family), plain(query), query, ...aliases, base, String(query).replace(/\s+/g, '')].filter(term=>term&&term.length>=2))].slice(0, 6)
 }
 const animeFamilies=[['无职转生','無職転生','無職轉生','mushokutensei'],['转生就是剑','转生成为魔剑','転生したら剣でした']]
 const animeKey=value=>{

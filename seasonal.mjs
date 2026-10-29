@@ -296,6 +296,25 @@ export async function createSeasonalService({
     }
     return items
   }
+  // The Bangumi search index can omit titles that the saved catalog already
+  // verified (FX战士久留美 is one example). Merge remembered subjects into the
+  // displayed quarter so a failed/short refresh never hides a known new anime.
+  function mergeKnown(items = [], season = seasonAt(now())) {
+    const merged = new Map((items || []).filter(Boolean).map(item => [item.id, item]))
+    for (const item of subjects.values()) {
+      if (!item?.id || item.nsfw || !item.airDate) continue
+      if (item.airDate < season.start || item.airDate >= season.end) continue
+      if (item.platform && !['TV', 'WEB'].includes(item.platform)) continue
+      const existing = merged.get(item.id)
+      merged.set(item.id, existing ? { ...item, ...existing } : item)
+    }
+    return [...merged.values()].sort(
+      (a, b) =>
+        Number(a.status === 'upcoming') - Number(b.status === 'upcoming') ||
+        String(b.airDate || '').localeCompare(String(a.airDate || '')) ||
+        (b.score || 0) - (a.score || 0),
+    )
+  }
   for (const file of [
     path.join(data, 'recommendations.json'),
     path.join(root, 'seasonal.json'),
@@ -522,10 +541,12 @@ export async function createSeasonalService({
           now().getTime() - Date.parse(current.updatedAt) > 6 * 3600000)
       )
         pending = refresh()
+      const items = mergeKnown(current?.items, season)
+      const merged = { ...(current || { season, updatedAt: null }), items }
       return {
-        ...(current || { season, updatedAt: null, slides: [] }),
+        ...merged,
         season,
-        slides: current ? seasonalBanner(current, season) : [],
+        slides: seasonalBanner(merged, season),
         refreshing: Boolean(pending),
         error: lastError,
       }

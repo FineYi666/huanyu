@@ -13,6 +13,15 @@
   --skin-shadow: 0 8px 26px rgb(49 78 39 / 0.08);
   --ambient: radial-gradient(ellipse at 92% 0%, #d8e9c935, transparent 45%);
   --texture: none;
+  /* Cinema surfaces stay dark for video contrast but inherit the active skin's
+     accent, so the player is visibly part of the selected theme. */
+  --cinema-base: #080b10;
+  --cinema-bg: color-mix(in srgb, var(--cinema-base) 72%, rgb(var(--accent-rgb)) 28%);
+  --cinema-panel: color-mix(in srgb, var(--cinema-base) 64%, rgb(var(--accent-rgb)) 36%);
+  --cinema-line: rgb(var(--accent-rgb) / 0.28);
+  --cinema-text: #f2f7f2;
+  --cinema-muted: color-mix(in srgb, #9fb0a4 55%, rgb(var(--accent-rgb)) 45%);
+  --cinema-accent: rgb(var(--accent-rgb));
 }
 [data-theme='dark'] {
   --accent-rgb: 164 197 139;

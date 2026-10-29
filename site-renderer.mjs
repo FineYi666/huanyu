@@ -9,12 +9,26 @@ export function createSiteRenderer(root,data,{runner,now=Date.now}={}) {
     const profile=path.join(data,'site-sessions',site.id)
     await mkdir(profile,{recursive:true})
     const input=Buffer.from(JSON.stringify({mode,url,profile,...options})).toString('base64url')
-    let executable=path.join(root,'幻屿.exe'),args=['--custom-site',input]
+    let executable=path.join(root,'幻屿.exe'),args=['--mute-audio','--custom-site',input]
     if(!(await stat(executable).catch(()=>null))){executable=path.join(root,'node_modules','electron','dist','electron.exe');args=[path.join(root,'desktop','site-entry.cjs'),input]}
     if(!(await stat(executable).catch(()=>null)))throw new Error('网站读取和验证需要幻屿桌面版')
     const env={...process.env};delete env.ELECTRON_RUN_AS_NODE
     const child=spawn(executable,args,{cwd:root,windowsHide:mode!=='verify',env,stdio:['ignore','pipe','pipe']})
-    return new Promise((resolve,reject)=>{let output='';child.stdout.on('data',part=>{output+=part;if(output.length>4*1024*1024)child.kill()});child.stderr.resume();child.on('error',reject);child.on('exit',()=>{const line=output.split(/\r?\n/).find(line=>line.startsWith('HUANYU_SITE_RESULT='));if(!line)return reject(new Error('网站读取未完成，请关闭网站验证窗口后重试'));try{resolve(JSON.parse(line.slice(19)))}catch{reject(new Error('网站返回数据无法读取'))}})})
+    return new Promise((resolve,reject)=>{
+      const chunks=[];let size=0
+      child.stdout.on('data',part=>{size+=part.length;if(size>4*1024*1024)child.kill();else chunks.push(part)})
+      child.stderr.resume()
+      child.on('error',reject)
+      child.on('close',()=>{
+        // Decode once after collecting Buffers: concatenating each chunk as a
+        // string can split a multi-byte Chinese character across chunk borders
+        // and corrupt the JSON snapshot of a large DDYS episode playlist.
+        const output=Buffer.concat(chunks).toString('utf8')
+        const line=output.split(/\r?\n/).find(line=>line.startsWith('HUANYU_SITE_RESULT='))
+        if(!line)return reject(new Error('网站读取未完成，请关闭网站验证窗口后重试'))
+        try{resolve(JSON.parse(line.slice(19)))}catch{reject(new Error('网站返回数据无法读取'))}
+      })
+    })
   }
   const launch=runner || nativeLaunch
   function startVerification(site,automatic=false,target) {

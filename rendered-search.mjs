@@ -14,7 +14,7 @@ export function createRenderedSearch(
         'base64url',
       )
       let executable = path.join(root, '幻屿.exe'),
-        args = ['--public-resource-search', encoded]
+        args = ['--mute-audio', '--public-resource-search', encoded]
       if (!(await stat(executable).catch(() => null))) {
         executable = path.join(
           root,
@@ -23,7 +23,7 @@ export function createRenderedSearch(
           'dist',
           'electron.exe',
         )
-        args = [path.join(root, 'desktop', 'search-entry.cjs'), encoded]
+        args = ['--mute-audio', path.join(root, 'desktop', 'search-entry.cjs'), encoded]
       }
       if (!(await stat(executable).catch(() => null)))
         throw new Error('网页搜索需要幻屿桌面版，请使用来源网站查找')

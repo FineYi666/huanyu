@@ -15,6 +15,9 @@ test('Quark matching filters same-word noise and does not truncate the wanted hi
   assert.equal(resourceRelevance('山水狂飙','狂飙'),0)
   assert.equal(resourceRelevance('狂飙赛车','狂飙'),0)
   assert.equal(resourceRelevance('狂飙营数学课程','狂飙'),0)
+  // Franchise titles keep the requested part on a real word boundary.
+  assert.equal(resourceRelevance('J JOJO的奇妙冒险.飙马野郎1080日语中字2026','飙马野郎'),3)
+  assert.equal(resourceRelevance('JOJO的奇妙冒险 飙马野郎 スティール・ボール・ラン (2026)','飙马野郎'),3)
   const rows=[...Array.from({length:30},(_,i)=>({content:`名称：其他作品${i}\nhttps://pan.quark.cn/s/other${i}`})),{content:'名称：琅琊榜 (2015)【54集全】【4K】\nhttps://pan.quark.cn/s/langya4k'}]
   const service=createResourceSearch({fetcher:async url=>String(url).includes('pansou.app')?Response.json({code:0,data:{merged_by_type:{}}}):new Response(`<script id="__NEXT_DATA__">${JSON.stringify({props:{pageProps:{data:{data:rows}}}})}</script>`)})
   const value=await service.search('琅琊榜')

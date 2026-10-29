@@ -25,6 +25,18 @@ exports.run = async function run(encoded) {
     isolated.setPermissionRequestHandler((_w, _p, done) => done(false))
     isolated.setPermissionCheckHandler(() => false)
     isolated.on('will-download', (event) => event.preventDefault())
+    // The public search site shows a one-time popup before its redirect page
+    // releases the Quark share. In a hidden window that popup is never clicked,
+    // so no share is resolved. Remember the "already shown" preference to get
+    // the plain redirect, without touching the site's security check.
+    await isolated.cookies
+      .set({
+        url: 'https://www.zhongchuangwl.com/',
+        name: 'popupShownToday',
+        value: '1',
+        path: '/',
+      })
+      .catch(() => {})
     let resolvedShare = '',
       resolving = false
     isolated.webRequest.onBeforeRequest((details, done) => {
@@ -64,6 +76,8 @@ exports.run = async function run(encoded) {
       },
     })
     window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))
+    // Search pages are read-only helpers; never let a site preview play audio.
+    window.webContents.setAudioMuted(true)
     const rows = [],
       failures = []
     const started = Date.now()
@@ -146,7 +160,7 @@ exports.run = async function run(encoded) {
             resolvedShare = ''
             resolving = true
             void window.loadURL(redirect).catch(() => {})
-            for (let attempt = 0; attempt < 16 && !resolvedShare; attempt++)
+            for (let attempt = 0; attempt < 24 && !resolvedShare; attempt++)
               await new Promise((resolve) => setTimeout(resolve, 250))
             resolving = false
             if (resolvedShare) rows.push({ ...row, url: resolvedShare })
