@@ -1,6 +1,6 @@
 ; 幻屿 Windows 安装包脚本（Inno Setup 6）
 #define MyAppName "幻屿"
-#define MyAppVersion "1.3.0"
+#define MyAppVersion "1.3.1"
 #define MyAppPublisher "幻屿 · Your private cinema"
 #define MyAppExeName "幻屿.exe"
 #ifndef AppSourceDir
@@ -27,7 +27,7 @@ UsePreviousAppDir=yes
 AlwaysShowDirOnReadyPage=yes
 DisableProgramGroupPage=yes
 OutputDir={#PackageOutputDir}
-OutputBaseFilename=幻屿-1.3.0-安装程序
+OutputBaseFilename=幻屿-1.3.1-安装程序
 SetupIconFile=..\public\yingyu.ico
 UninstallDisplayIcon={app}\{#MyAppExeName}
 Compression=lzma2/max

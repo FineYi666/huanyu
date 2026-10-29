@@ -6,7 +6,7 @@ $shortcutPath = Join-Path $desktopPath ($appName + '.lnk')
 $scriptName = [string][char]0x542F + [char]0x52A8 + $appName + '.vbs'
 $launcher = Join-Path $appRoot $scriptName
 $nativePath = Join-Path $appRoot ($appName + '.exe')
-if (!(Test-Path -LiteralPath $nativePath)) { $nativePath = Join-Path $appRoot ('release\' + $appName + '-1.3.0-Windows-x64\' + $appName + '.exe') }
+if (!(Test-Path -LiteralPath $nativePath)) { $nativePath = Join-Path $appRoot ('release\' + $appName + '-1.3.1-Windows-x64\' + $appName + '.exe') }
 $iconPath = Join-Path $appRoot 'dist\yingyu.ico'
 if (!(Test-Path -LiteralPath $launcher) -or !(Test-Path -LiteralPath $iconPath)) { throw 'Missing launcher or icon. Build the app first.' }
 $shell = New-Object -ComObject WScript.Shell

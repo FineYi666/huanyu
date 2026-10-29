@@ -447,7 +447,7 @@ const server = http.createServer(async (req, res) => {
     if (route === '/api/state' && req.method === 'GET')
       return json(res, publicState())
     if (route === '/api/health')
-      return json(res, { ok: true, app: 'yingyu', version: '1.3.0', buildId })
+      return json(res, { ok: true, app: 'yingyu', version: '1.3.1', buildId })
     if (route === '/api/recommendations' && req.method === 'GET')
       return json(res, posters.catalog(recommendations.get()))
     if (route === '/api/seasonal' && req.method === 'GET')

@@ -1459,7 +1459,7 @@ function SettingsDialog({
         </a>
       </div>
       <p className="version-note">
-        幻屿 HUANYU · 1.3.0 <span>为每一个喜欢的故事，留一座小岛。</span>
+        幻屿 HUANYU · 1.3.1 <span>为每一个喜欢的故事，留一座小岛。</span>
       </p>
     </Dialog>
   )

@@ -31,6 +31,7 @@ try {
   if (!process.argv.includes('--no-open')) {
     const nativeCandidates = [
       path.join(root, '幻屿.exe'),
+      path.join(root, 'release', '幻屿-1.3.1-Windows-x64', '幻屿.exe'),
       path.join(root, 'release', '幻屿-1.3.0-Windows-x64', '幻屿.exe'),
       path.join(root, '..', '映屿-1.3.0-Windows-x64', '幻屿.exe'),
     ]
